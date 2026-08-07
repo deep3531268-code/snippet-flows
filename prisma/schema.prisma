@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users are managed by Neon Auth; the `id` mirrors neon_auth.users(id).
+model User {
+  id        String   @id @db.Uuid
+  email     String   @unique @map("email") @db.VarChar(255)
+  name      String?  @map("name") @db.VarChar(100)
+  avatarUrl String?  @map("avatar_url") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  snippets    Snippet[]
+  collections Collection[]
+  tags        Tag[]
+
+  @@map("users")
+}
+
+model Snippet {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  title       String    @map("title") @db.VarChar(200)
+  description String?   @map("description") @db.VarChar(500)
+  content     String    @map("content")
+  language    String    @default("plaintext") @map("language") @db.VarChar(50)
+  isPublic    Boolean   @default(false) @map("is_public")
+  isFavorite  Boolean   @default(false) @map("is_favorite")
+  isArchived  Boolean   @default(false) @map("is_archived")
+  deletedAt   DateTime? @map("deleted_at")
+  slug        String?   @unique @map("slug") @db.VarChar(120)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collections SnippetsOnCollections[]
+  tags        SnippetsOnTags[]
+
+  @@index([userId, isPublic, createdAt(sort: Desc)])
+  @@index([userId, isArchived, deletedAt])
+  @@index([language])
+  @@index([isPublic])
+  @@map("snippets")
+}
+
+model Collection {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  name        String   @map("name") @db.VarChar(100)
+  description String?  @map("description") @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snippets SnippetsOnCollections[]
+
+  @@unique([userId, name])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("collections")
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String   @map("name") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snippets SnippetsOnTags[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
+}
+
+model SnippetsOnCollections {
+  snippetId    String   @map("snippet_id") @db.Uuid
+  collectionId String   @map("collection_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  snippet    Snippet    @relation(fields: [snippetId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([snippetId, collectionId])
+  @@index([collectionId])
+  @@map("snippets_on_collections")
+}
+
+model SnippetsOnTags {
+  snippetId String   @map("snippet_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  snippet Snippet @relation(fields: [snippetId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([snippetId, tagId])
+  @@index([tagId])
+  @@map("snippets_on_tags")
+}

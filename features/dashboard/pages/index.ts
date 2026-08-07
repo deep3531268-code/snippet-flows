@@ -1,0 +1,9 @@
+export { DashboardHome } from "./dashboard-home";
+export { SnippetsPage } from "./snippets-page";
+export { CollectionsPage } from "./collections-page";
+export { WelcomeHeader } from "./welcome-header";
+export { QuickActions } from "./quick-actions";
+export { ContinueWorking } from "./continue-working";
+export { RecentActivity } from "./recent-activity";
+export { Collections } from "./collections";
+export { HelpfulResources } from "./helpful-resources";
