@@ -99,7 +99,7 @@ export function Testimonials() {
                 className={animated ? animated.className : undefined}
                 style={animated ? animated.style : undefined}
               >
-                <figure className="group flex h-full flex-col rounded-xl border border-border/60 bg-card/80 p-6 shadow-float backdrop-blur-xl transition-all duration-300 supports-[backdrop-filter]:bg-card/60 hover:-translate-y-1 hover:border-foreground/20 hover:shadow-lifted">
+                <figure className="group flex h-full flex-col rounded-xl border border-border/60 bg-card/80 p-6 shadow-float backdrop-blur-md transition-all duration-300 supports-[backdrop-filter]:bg-card/60 hover:-translate-y-1 hover:border-foreground/20 hover:shadow-lifted">
                   <Quote
                     aria-hidden
                     className="size-5 text-primary/60 transition-transform duration-300 group-hover:scale-110"

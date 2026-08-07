@@ -18,11 +18,11 @@ function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="popLayout" initial={false}>
       <motion.div
         key={pathname}
         variants={pageTransition}
-        initial="hidden"
+        initial={false}
         animate="visible"
         exit="exit"
         className="flex min-h-full flex-col"

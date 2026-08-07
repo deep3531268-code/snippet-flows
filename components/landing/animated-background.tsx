@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   motion,
   useMotionValue,
-  useReducedMotion,
   useSpring,
 } from "framer-motion"
 
@@ -54,8 +53,6 @@ const NOISE =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"
 
 export function AnimatedBackground() {
-  const reduceMotion = useReducedMotion()
-
   const pointerX = useMotionValue(0)
   const pointerY = useMotionValue(0)
   const parallaxX = useSpring(pointerX, { stiffness: 40, damping: 20 })
@@ -95,27 +92,27 @@ export function AnimatedBackground() {
         }}
       />
 
+      <div
+        className="absolute inset-0 opacity-[0.035] mix-blend-overlay"
+        style={{ backgroundImage: NOISE }}
+      />
+
       <motion.div
         className="absolute inset-0"
         style={{ x: parallaxX, y: parallaxY }}
       >
         {AURORAS.map((aurora, index) => (
-          <motion.div
+          <div
             key={`aurora-${index}`}
-            className={`absolute rounded-full blur-3xl ${aurora.className}`}
-            animate={
-              reduceMotion
-                ? undefined
-                : {
-                    x: [0, aurora.drift, 0],
-                    y: [0, aurora.drift * 0.6, 0],
-                  }
+            className={`absolute rounded-full blur-2xl ${aurora.className} animate-ambient-drift`}
+            style={
+              {
+                "--drift-x": `${aurora.drift}px`,
+                "--drift-y": `${aurora.drift * 0.6}px`,
+                "--ambient-duration": `${aurora.duration}s`,
+                willChange: "transform",
+              } as React.CSSProperties
             }
-            transition={{
-              repeat: Infinity,
-              duration: aurora.duration,
-              ease: "easeInOut",
-            }}
           />
         ))}
       </motion.div>
@@ -125,30 +122,20 @@ export function AnimatedBackground() {
         style={{ x: orbsX, y: orbsY }}
       >
         {ORBS.map((orb, index) => (
-          <motion.div
+          <div
             key={`orb-${index}`}
-            className={`absolute rounded-full blur-2xl ${orb.className}`}
-            animate={
-              reduceMotion
-                ? undefined
-                : {
-                    y: [0, orb.travel, 0],
-                  }
+            className={`absolute rounded-full blur-xl ${orb.className} animate-ambient-drift`}
+            style={
+              {
+                "--drift-y": `${orb.travel}px`,
+                "--ambient-duration": `${orb.duration}s`,
+                animationDelay: `${index * 0.8}s`,
+                willChange: "transform",
+              } as React.CSSProperties
             }
-            transition={{
-              repeat: Infinity,
-              duration: orb.duration,
-              ease: "easeInOut",
-              delay: index * 0.8,
-            }}
           />
         ))}
       </motion.div>
-
-      <div
-        className="absolute inset-0 opacity-[0.035] mix-blend-overlay"
-        style={{ backgroundImage: NOISE }}
-      />
     </div>
   )
 }

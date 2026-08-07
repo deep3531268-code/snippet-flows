@@ -61,7 +61,7 @@ function TagCard({
       role="button"
       tabIndex={0}
       className={cn(
-        "group flex h-full cursor-pointer flex-col gap-4 p-5",
+        "group flex h-full cursor-pointer flex-col gap-4 p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7cb3ff]",
         className,
       )}
     >
@@ -74,7 +74,7 @@ function TagCard({
               checked={selected}
               onChange={() => onToggleSelect(tag.id)}
               onClick={(event) => event.stopPropagation()}
-              className="size-4 shrink-0 cursor-pointer appearance-none rounded border border-white/[0.15] bg-white/[0.03] transition-colors checked:border-[#2563eb] checked:bg-[#2563eb]"
+              className="size-4 shrink-0 cursor-pointer appearance-none rounded border border-white/[0.15] bg-white/[0.03] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7cb3ff] checked:border-[#2563eb] checked:bg-[#2563eb]"
             />
           ) : null}
           <div
@@ -112,6 +112,7 @@ function TagCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
+            onClick={(event) => event.stopPropagation()}
             className="w-44 border-white/[0.08] bg-[#141f30] text-[#e8edf5] ring-white/[0.1]"
           >
             <DropdownMenuItem

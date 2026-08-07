@@ -62,7 +62,7 @@ export function Navbar() {
         className={cn(
           "transition-all duration-300",
           scrolled
-            ? "border-b border-border/60 bg-background/70 shadow-card backdrop-blur-xl supports-[backdrop-filter]:bg-background/60"
+            ? "border-b border-border/60 bg-background/70 shadow-card backdrop-blur-md supports-[backdrop-filter]:bg-background/60"
             : "border-b border-transparent",
         )}
       >

@@ -1,5 +1,6 @@
 "use server"
 
+import { Prisma } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
@@ -54,6 +55,13 @@ function message(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
+function isNameTakenError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  )
+}
+
 export async function createTag(
   _prevState: TagFormState,
   formData: FormData,
@@ -73,6 +81,9 @@ export async function createTag(
     revalidatePath("/dashboard/tags")
     return { tagId: tag.id }
   } catch (error) {
+    if (isNameTakenError(error)) {
+      return { fieldErrors: { name: ["A tag with this name already exists"] } }
+    }
     return { error: message(error, "Failed to create tag") }
   }
 }
@@ -97,6 +108,9 @@ export async function updateTag(
     revalidatePath("/dashboard/tags")
     return { tagId: tag.id }
   } catch (error) {
+    if (isNameTakenError(error)) {
+      return { fieldErrors: { name: ["A tag with this name already exists"] } }
+    }
     return { error: message(error, "Failed to update tag") }
   }
 }
@@ -151,6 +165,7 @@ export async function addSnippetsToTag(
       parsed.data.snippetIds,
     )
     revalidatePath("/dashboard/tags")
+    revalidatePath(`/dashboard/tags/${parsed.data.tagId}`)
     return { ok: true }
   } catch (error) {
     return { error: message(error, "Failed to add snippets") }
@@ -175,6 +190,7 @@ export async function removeSnippetFromTag(
       parsed.data.snippetId,
     )
     revalidatePath("/dashboard/tags")
+    revalidatePath(`/dashboard/tags/${parsed.data.tagId}`)
     return { ok: true }
   } catch (error) {
     return { error: message(error, "Failed to remove snippet") }

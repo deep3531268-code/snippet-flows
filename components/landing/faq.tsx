@@ -101,7 +101,7 @@ export function Faq() {
         </div>
 
         <div
-          className={`mt-12 overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-float backdrop-blur-xl supports-[backdrop-filter]:bg-card/60 ${
+          className={`mt-12 overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-float backdrop-blur-md supports-[backdrop-filter]:bg-card/60 ${
             inView ? entrance(0.25).className : ""
           }`}
           style={inView ? entrance(0.25).style : undefined}

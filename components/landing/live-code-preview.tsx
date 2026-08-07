@@ -264,9 +264,9 @@ export function LiveCodePreview() {
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-3 -z-10 rounded-3xl bg-primary/10 blur-2xl"
+        className="pointer-events-none absolute -inset-3 -z-10 rounded-3xl bg-primary/10 blur-xl"
       />
-      <div className="overflow-hidden rounded-xl border bg-card/80 shadow-float backdrop-blur-xl transition-all duration-300 supports-[backdrop-filter]:bg-card/60 hover:-translate-y-1 hover:shadow-lifted">
+      <div className="overflow-hidden rounded-xl border bg-card/80 shadow-float backdrop-blur-md transition-all duration-300 supports-[backdrop-filter]:bg-card/60 hover:-translate-y-1 hover:shadow-lifted">
         <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-3 py-2">
           <div
             className="flex shrink-0 gap-1.5 transition-transform duration-200 hover:scale-105"

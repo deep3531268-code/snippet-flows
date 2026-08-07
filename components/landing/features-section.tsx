@@ -112,7 +112,7 @@ export function FeaturesSection() {
                 className={animated ? animated.className : undefined}
                 style={animated ? animated.style : undefined}
               >
-                <div className="group h-full rounded-xl border border-border/60 bg-card/80 p-6 shadow-float backdrop-blur-xl transition-all duration-300 supports-[backdrop-filter]:bg-card/60 hover:-translate-y-1 hover:border-foreground/20 hover:shadow-lifted">
+                <div className="group h-full rounded-xl border border-border/60 bg-card/80 p-6 shadow-float backdrop-blur-md transition-all duration-300 supports-[backdrop-filter]:bg-card/60 hover:-translate-y-1 hover:border-foreground/20 hover:shadow-lifted">
                   <span className="inline-flex items-center justify-center rounded-lg border border-border/60 bg-muted/60 p-2.5 text-muted-foreground transition-all duration-300 group-hover:scale-110 group-hover:border-primary/30 group-hover:text-primary">
                     <Icon className="size-5" aria-hidden />
                   </span>

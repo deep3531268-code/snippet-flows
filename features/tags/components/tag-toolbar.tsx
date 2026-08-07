@@ -26,7 +26,7 @@ function SelectAllCheckbox({
       checked={checked}
       disabled={disabled}
       onChange={(event) => onCheckedChange(event.target.checked)}
-      className="size-4 shrink-0 cursor-pointer appearance-none rounded border border-white/[0.15] bg-white/[0.03] transition-colors checked:border-[#2563eb] checked:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50"
+      className="size-4 shrink-0 cursor-pointer appearance-none rounded border border-white/[0.15] bg-white/[0.03] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7cb3ff] checked:border-[#2563eb] checked:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50"
     />
   )
 }

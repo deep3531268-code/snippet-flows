@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useActionState, useEffect, useState } from "react"
+import { useActionState, useState } from "react"
 import { toast } from "sonner"
 
 import { DashboardButton, DashboardInput } from "@/features/dashboard/ui"
@@ -97,11 +97,11 @@ function TagForm({
             <button
               key={value}
               type="button"
-            aria-label={`${TAG_COLOR_LABELS[value]} color`}
-            aria-pressed={color === value}
-            disabled={pending}
-            onClick={() => setColor(value)}
-            className={cn(
+              aria-label={`${TAG_COLOR_LABELS[value]} color`}
+              aria-pressed={color === value}
+              disabled={pending}
+              onClick={() => setColor(value)}
+              className={cn(
                 "size-7 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7cb3ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f1826] disabled:cursor-not-allowed disabled:opacity-50",
                 TAG_COLOR_SWATCH[value],
                 color === value

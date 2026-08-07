@@ -29,14 +29,14 @@ export function Cta() {
       aria-label="Get started"
     >
       <div
-        className={`relative mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-border/60 bg-card/80 px-6 py-16 shadow-float backdrop-blur-xl supports-[backdrop-filter]:bg-card/60 sm:px-16 ${
+        className={`relative mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-border/60 bg-card/80 px-6 py-16 shadow-float backdrop-blur-md supports-[backdrop-filter]:bg-card/60 sm:px-16 ${
           inView ? entrance(0.25).className : ""
         }`}
         style={inView ? entrance(0.25).style : undefined}
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl"
+          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/15 blur-2xl"
         />
         <div className="flex flex-col items-center text-center">
           <h2

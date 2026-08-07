@@ -61,6 +61,8 @@
 
   --animate-shimmer: shimmer 1.8s ease-in-out infinite;
   --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
+  --animate-ambient-drift: ambient-drift var(--ambient-duration, 36s)
+    ease-in-out infinite;
   --animate-toast-in: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-scale-in: scale-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-in: fade-in 0.2s ease-out;
@@ -127,6 +129,16 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+
+  @keyframes ambient-drift {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(var(--drift-x, 0), var(--drift-y, 0));
     }
   }
 }
