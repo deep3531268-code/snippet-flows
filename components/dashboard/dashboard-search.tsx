@@ -4,22 +4,16 @@ import * as React from "react"
 import { Search } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
+import { useGlobalSearch } from "@/features/search"
 
 export function DashboardSearch() {
-  const inputRef = React.useRef<HTMLInputElement>(null)
   const [isMac, setIsMac] = React.useState(false)
+  const { open } = useGlobalSearch()
 
   React.useEffect(() => {
-    setIsMac(/Mac|iPhone|iPad/.test(navigator.platform))
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault()
-        inputRef.current?.focus()
-      }
-    }
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
+    const update = () =>
+      setIsMac(/Mac|iPhone|iPad/.test(navigator.platform))
+    update()
   }, [])
 
   return (
@@ -29,11 +23,12 @@ export function DashboardSearch() {
         aria-hidden
       />
       <Input
-        ref={inputRef}
         type="search"
-        aria-label="Search snippets"
+        aria-label="Open global search"
         placeholder="Search snippets..."
-        className="h-8 pr-16 pl-8"
+        readOnly
+        onFocus={open}
+        className="h-8 pr-16 pl-8 cursor-pointer"
       />
       <kbd
         className="pointer-events-none absolute top-1/2 right-2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-border bg-muted/50 px-1.5 py-0.5 font-sans text-[10px] font-medium text-muted-foreground select-none sm:flex"
