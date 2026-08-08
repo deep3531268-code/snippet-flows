@@ -39,7 +39,7 @@ function HelpfulResources({
   return (
     <DashboardCard className={cn("flex flex-col gap-5", className)}>
       <SectionHeader title="Helpful Resources" description="Learn the essentials" />
-      <ul className="flex flex-col gap-2">
+      <ul className="grid gap-2 sm:grid-cols-3">
         {RESOURCES.map((resource) => (
           <li
             key={resource.label}

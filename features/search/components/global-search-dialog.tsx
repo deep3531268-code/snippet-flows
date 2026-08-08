@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Clock, CornerDownLeft, History, SearchX } from "lucide-react"
+import { Clock, CornerDownLeft, History, Search, SearchX } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import {
@@ -15,18 +15,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { SearchInput } from "@/features/dashboard/ui"
 import { cn } from "@/lib/utils"
 
-import { isSearchableQuery } from "../normalize"
+import { SEARCH_MODES } from "../api/search"
 import type { RecentOpenEntry } from "../memory/search-memory"
+import { isSearchableQuery } from "../normalize"
 import { useGlobalSearch } from "../state/search-context"
-import type { SearchItem, SearchMode, SearchSection } from "../types"
+import { searchRowClassName, searchStateRowClassName } from "../styles"
+import type { SearchItem, SearchSection } from "../types"
+import { SearchFooter } from "./search-footer"
 import { SearchResultRow } from "./search-result-row"
-
-const SEARCH_MODES = [
-  { value: "all", label: "All" },
-  { value: "snippets", label: "Snippets" },
-  { value: "collections", label: "Collections" },
-  { value: "tags", label: "Tags" },
-] as const satisfies ReadonlyArray<{ value: SearchMode; label: string }>
 
 type SearchRow =
   | { key: string; type: "recent-search"; term: string }
@@ -68,11 +64,25 @@ export function GlobalSearchDialog() {
 
   const queryActive = isSearchableQuery(debouncedQuery)
 
+  const visibleSections = React.useMemo(
+    () =>
+      sections.filter((section) =>
+        mode === "all" ? queryActive : section.id === mode,
+      ),
+    [sections, mode, queryActive],
+  )
+
+  const totalResults = React.useMemo(
+    () =>
+      visibleSections.reduce(
+        (sum, section) => sum + section.results.length,
+        0,
+      ),
+    [visibleSections],
+  )
+
   const groups = React.useMemo(() => {
     const built: SearchGroup[] = []
-    const visibleSections = sections.filter((section) =>
-      mode === "all" ? queryActive : section.id === mode,
-    )
 
     if (queryActive && isSearching) {
       built.push({
@@ -162,7 +172,7 @@ export function GlobalSearchDialog() {
     queryActive,
     isSearching,
     mode,
-    sections,
+    visibleSections,
     recentSearches,
     recentlyOpened,
   ])
@@ -256,6 +266,19 @@ export function GlobalSearchDialog() {
   const activeId =
     activeRow && activeIndex >= 0 ? `search-option-${activeIndex}` : undefined
 
+  React.useEffect(() => {
+    if (!activeId) return
+    document.getElementById(activeId)?.scrollIntoView({ block: "nearest" })
+  }, [activeIndex, activeId])
+
+  const statusAnnouncement = isSearching
+    ? "Searching"
+    : queryActive
+      ? totalResults > 0
+        ? `${totalResults} result${totalResults === 1 ? "" : "s"} found`
+        : "No results found"
+      : "Search"
+
   return (
     <Dialog
       open={isOpen}
@@ -271,6 +294,9 @@ export function GlobalSearchDialog() {
         <DialogDescription className="sr-only">
           Search snippets, collections, and tags across SnippetFlow.
         </DialogDescription>
+        <span aria-live="polite" className="sr-only">
+          {statusAnnouncement}
+        </span>
 
         <div onKeyDown={onKeyDown} className="flex flex-col">
           <div className="border-b p-3">
@@ -302,7 +328,8 @@ export function GlobalSearchDialog() {
                     aria-pressed={selected}
                     onClick={() => setMode(searchMode.value)}
                     className={cn(
-                      "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors outline-none",
+                      "focus-visible:ring-2 focus-visible:ring-ring",
                       selected
                         ? "bg-muted text-foreground"
                         : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -319,6 +346,7 @@ export function GlobalSearchDialog() {
             id="search-results"
             role="listbox"
             aria-label="Search results"
+            aria-busy={isSearching}
             className="max-h-[min(60vh,420px)] overflow-y-auto p-2"
           >
             {groups.map((group) => {
@@ -370,13 +398,8 @@ export function GlobalSearchDialog() {
                     const active = index === activeIndex
                     const optionId = index != null ? `search-option-${index}` : undefined
 
-                    const baseRow = cn(
-                      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm outline-none",
-                      "focus-visible:ring-2 focus-visible:ring-ring",
-                      active
-                        ? "bg-muted text-foreground"
-                        : "text-foreground/90 hover:bg-muted/60",
-                    )
+                    const baseRow = searchRowClassName(active)
+                    const stateRow = searchStateRowClassName()
 
                     switch (row.type) {
                       case "recent-search":
@@ -445,12 +468,14 @@ export function GlobalSearchDialog() {
                             role="option"
                             aria-selected={false}
                             aria-disabled
-                            className={cn(baseRow, "cursor-default")}
+                            className={cn(
+                              stateRow,
+                              "flex-col items-stretch gap-1.5",
+                            )}
                           >
-                            <span className="flex w-full flex-col gap-1.5">
-                              <Skeleton className="h-3.5 w-2/3" />
-                              <Skeleton className="h-3 w-full" />
-                            </span>
+                            <Skeleton className="h-3.5 w-1/2" />
+                            <Skeleton className="h-3 w-full" />
+                            <Skeleton className="h-3 w-2/3" />
                           </div>
                         )
                       case "no-results":
@@ -461,16 +486,21 @@ export function GlobalSearchDialog() {
                             aria-selected={false}
                             aria-disabled
                             className={cn(
-                              baseRow,
-                              "cursor-default text-muted-foreground",
+                              stateRow,
+                              "flex-col items-start gap-1 py-3",
                             )}
                           >
-                            <SearchX
-                              className="size-4 shrink-0 text-muted-foreground"
-                              aria-hidden
-                            />
-                            <span className="truncate">
-                              No results for &quot;{debouncedQuery.trim()}&quot;
+                            <span className="flex items-center gap-2">
+                              <SearchX
+                                className="size-4 shrink-0 text-muted-foreground"
+                                aria-hidden
+                              />
+                              <span className="font-medium text-foreground/80">
+                                No results for &quot;{debouncedQuery.trim()}&quot;
+                              </span>
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/80">
+                              Try different keywords or a specific section.
                             </span>
                           </div>
                         )
@@ -478,13 +508,12 @@ export function GlobalSearchDialog() {
                         return (
                           <div
                             key={row.key}
-                            id={optionId}
                             role="option"
-                            aria-selected={active}
+                            aria-selected={false}
                             aria-disabled
-                            className={cn(baseRow, "cursor-default text-muted-foreground")}
+                            className={stateRow}
                           >
-                            <span>
+                            <span className="text-xs">
                               No {row.section.title.toLowerCase()} yet.
                             </span>
                           </div>
@@ -493,13 +522,26 @@ export function GlobalSearchDialog() {
                         return (
                           <div
                             key={row.key}
-                            id={optionId}
                             role="option"
-                            aria-selected={active}
+                            aria-selected={false}
                             aria-disabled
-                            className={cn(baseRow, "cursor-default text-muted-foreground")}
+                            className={cn(
+                              stateRow,
+                              "flex-col items-start gap-1 py-3",
+                            )}
                           >
-                            <span>{row.text}</span>
+                            <span className="flex items-center gap-2">
+                              <Search
+                                className="size-4 shrink-0 text-muted-foreground"
+                                aria-hidden
+                              />
+                              <span className="font-medium text-foreground/80">
+                                {row.text}
+                              </span>
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/80">
+                              Press ↑ ↓ to navigate and ↵ to open.
+                            </span>
                           </div>
                         )
                     }
@@ -509,20 +551,7 @@ export function GlobalSearchDialog() {
             })}
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t px-3 py-2 text-[10px] text-muted-foreground">
-            <span>
-              <kbd>↑</kbd> <kbd>↓</kbd> navigate
-            </span>
-            <span>
-              <kbd>↵</kbd> open
-            </span>
-            <span>
-              <kbd>tab</kbd> section
-            </span>
-            <span className="ml-auto">
-              <kbd>esc</kbd> close
-            </span>
-          </div>
+          <SearchFooter queryActive={queryActive} resultCount={totalResults} />
         </div>
       </DialogContent>
     </Dialog>

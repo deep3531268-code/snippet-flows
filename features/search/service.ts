@@ -1,7 +1,6 @@
 import "server-only"
 
-import type { TagColor } from "@/features/tags/types"
-import { TAG_COLORS } from "@/features/tags/query"
+import { getTagColor } from "@/features/tags/query"
 
 import { SEARCH_CONFIG } from "./config"
 import { normalizeSearchQuery } from "./normalize"
@@ -16,11 +15,6 @@ function collectionRoute(id: string) {
 
 function tagRoute(id: string) {
   return `/dashboard/tags/${id}`
-}
-
-function tagColorFor(name: string): TagColor {
-  const sum = Array.from(name).reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return TAG_COLORS[sum % TAG_COLORS.length]
 }
 
 function buildCodePreview(content: string, query: string): string | undefined {
@@ -83,7 +77,7 @@ export const searchService = {
         kind: "tag",
         title: tag.name,
         snippetCount: tag._count.snippets,
-        tagColor: tagColorFor(tag.name),
+        tagColor: getTagColor(tag.name),
         route: tagRoute(tag.id),
       })),
     }

@@ -4,12 +4,14 @@ export {
 } from "./state/search-context"
 export type { SearchContextValue } from "./state/search-context"
 export { GlobalSearchDialog } from "./components/global-search-dialog"
-export { createSearchApi, SEARCH_SECTIONS } from "./api/search"
+export { createSearchApi, SEARCH_MODES, SEARCH_SECTIONS } from "./api/search"
 export type { SearchApi } from "./api/search"
 export { searchAll } from "./actions"
 export type { SearchResults } from "./service"
 export { SEARCH_CONFIG } from "./config"
 export { normalizeSearchQuery, isSearchableQuery } from "./normalize"
+export { rankByRelevance, scoreSearchResult } from "./ranking"
+export type { RankableSearchResult } from "./ranking"
 export type {
   SearchFilters,
   SearchItem,

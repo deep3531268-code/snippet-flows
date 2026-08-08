@@ -37,6 +37,11 @@ export const TAG_COLORS: TagColor[] = [
   "teal",
 ]
 
+export function getTagColor(name: string): TagColor {
+  const sum = Array.from(name).reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return TAG_COLORS[sum % TAG_COLORS.length]
+}
+
 export const TAG_COLOR_LABELS: Record<TagColor, string> = {
   blue: "Blue",
   green: "Green",

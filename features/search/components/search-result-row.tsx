@@ -5,6 +5,7 @@ import { Highlight } from "@/features/shared/components/highlight"
 import { TAG_COLOR_SWATCH } from "@/features/tags/query"
 import { cn } from "@/lib/utils"
 
+import { searchRowClassName } from "../styles"
 import type { SearchItem } from "../types"
 
 function SnippetContent({ item, query }: { item: SearchItem; query: string }) {
@@ -77,13 +78,7 @@ export function SearchResultRow({
       aria-current={active ? "true" : undefined}
       onMouseEnter={onMouseEnter}
       onClick={onActivate}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm outline-none",
-        "focus-visible:ring-2 focus-visible:ring-ring",
-        active
-          ? "bg-muted text-foreground shadow-sm ring-1 ring-ring/40"
-          : "text-foreground/90 hover:bg-muted/60",
-      )}
+      className={searchRowClassName(active)}
     >
       <span className="flex min-w-0 flex-1 flex-col">
         {item.kind === "snippet" ? (
@@ -93,8 +88,9 @@ export function SearchResultRow({
         )}
       </span>
       {item.snippetCount != null ? (
-        <Badge variant="outline" className="shrink-0 tabular-nums">
-          {item.snippetCount}
+        <Badge variant="outline" className="shrink-0 whitespace-nowrap tabular-nums">
+          {item.snippetCount}{" "}
+          {item.snippetCount === 1 ? "snippet" : "snippets"}
         </Badge>
       ) : null}
       <Badge variant="outline" className="shrink-0 capitalize">

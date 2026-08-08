@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { Folder } from "lucide-react";
+import { FileCode2, Star } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -17,43 +17,47 @@ import {
   dashboardTypography,
 } from "@/features/dashboard/theme";
 import { RelativeTime } from "@/features/shared/components/relative-time";
-import type { DashboardCollectionSummary } from "../types";
+import {
+  SNIPPET_LANGUAGE_LABELS,
+  type SnippetLanguage,
+} from "@/features/snippets/languages";
+import type { DashboardRecentSnippet } from "../types";
 
-function Collections({
-  collections,
+function languageLabel(language: string) {
+  return SNIPPET_LANGUAGE_LABELS[language as SnippetLanguage] ?? language;
+}
+
+function RecentSnippets({
+  snippets,
   className,
 }: {
-  collections: DashboardCollectionSummary[];
+  snippets: DashboardRecentSnippet[];
   className?: string;
 }) {
   return (
     <DashboardCard className={cn("flex flex-col gap-5", className)}>
       <SectionHeader
-        title="Collections"
-        description="Organize your snippets"
+        title="Recent Snippets"
+        description="Your latest updates"
         action={
           <DashboardButton asChild variant="secondary" size="sm">
-            <Link href="/dashboard/collections">View all</Link>
+            <Link href="/dashboard/snippets">View all</Link>
           </DashboardButton>
         }
       />
-      {collections.length === 0 ? (
+      {snippets.length === 0 ? (
         <EmptyState
-          icon={Folder}
-          title="No collections yet"
-          description="Create a collection to keep related snippets together."
+          icon={FileCode2}
+          title="No snippets yet"
+          description="Create your first snippet to see it here."
           className="min-h-[280px] flex-1 border-0 bg-transparent shadow-none"
-        >
-          <DashboardButton asChild size="sm">
-            <Link href="/dashboard/collections">New Collection</Link>
-          </DashboardButton>
-        </EmptyState>
+        />
       ) : (
         <ul className="flex flex-col gap-2">
-          {collections.map((collection) => (
-            <li key={collection.id}>
+          {snippets.map((snippet) => (
+            <li key={snippet.id}>
               <Link
-                href={`/dashboard/collections/${collection.id}`}
+                href="/dashboard/snippets"
                 className={cn(
                   "group flex items-center gap-3 rounded-xl px-3 py-3",
                   dashboardRadius.button,
@@ -61,16 +65,15 @@ function Collections({
                   dashboardTransitions.theme,
                 )}
               >
-                <div
+                <Star
+                  aria-hidden
                   className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-[10px]",
-                    "bg-[#10b981]/15 text-[#6ee7b7] ring-1 ring-[#10b981]/25",
-                    dashboardTransitions.theme,
-                    "group-hover:bg-[#10b981]/25",
+                    "size-4 shrink-0",
+                    snippet.isFavorite
+                      ? "fill-[#f59e0b] text-[#f59e0b]"
+                      : "text-[#5b6b82]",
                   )}
-                >
-                  <Folder aria-hidden className="size-4" />
-                </div>
+                />
                 <div className="grid min-w-0 flex-1 gap-0.5">
                   <span
                     className={cn(
@@ -79,15 +82,19 @@ function Collections({
                       dashboardColors.body,
                     )}
                   >
-                    {collection.name}
+                    {snippet.title}
                   </span>
                   <span className={cn(dashboardTypography.caption, dashboardColors.caption)}>
-                    <RelativeTime date={collection.updatedAt} />
+                    <RelativeTime date={snippet.updatedAt} />
                   </span>
                 </div>
+                {snippet.collections[0] ? (
+                  <DashboardBadge variant="secondary">
+                    {snippet.collections[0].name}
+                  </DashboardBadge>
+                ) : null}
                 <DashboardBadge variant="secondary">
-                  {collection.snippetCount}{" "}
-                  {collection.snippetCount === 1 ? "snippet" : "snippets"}
+                  {languageLabel(snippet.language)}
                 </DashboardBadge>
               </Link>
             </li>
@@ -98,4 +105,4 @@ function Collections({
   );
 }
 
-export { Collections };
+export { RecentSnippets };

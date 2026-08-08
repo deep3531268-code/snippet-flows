@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 
 import { SEARCH_CONFIG } from "./config"
 import { matchAny } from "./predicates"
+import { rankByRelevance } from "./ranking"
 
 const SNIPPET_SEARCH_FIELDS: readonly (keyof Prisma.SnippetWhereInput)[] = [
   "title",
@@ -56,6 +57,8 @@ const snippetSelect = {
   description: true,
   language: true,
   content: true,
+  updatedAt: true,
+  createdAt: true,
 } as const
 
 const collectionSelect = {
@@ -63,39 +66,59 @@ const collectionSelect = {
   name: true,
   description: true,
   _count: { select: { snippets: true } },
+  updatedAt: true,
+  createdAt: true,
 } as const
 
 const tagSelect = {
   id: true,
   name: true,
   _count: { select: { snippets: true } },
+  createdAt: true,
 } as const
 
 export const searchRepository = {
-  findSnippets(userId: string, query: string) {
-    return prisma.snippet.findMany({
+  async findSnippets(userId: string, query: string) {
+    const rows = await prisma.snippet.findMany({
       where: snippetWhere(userId, query),
       select: snippetSelect,
       orderBy: { updatedAt: "desc" },
       take: SEARCH_CONFIG.limits.snippets,
     })
+    return rankByRelevance(query, rows, (snippet) => ({
+      title: snippet.title,
+      description: snippet.description,
+      content: snippet.content,
+      updatedAt: snippet.updatedAt,
+      createdAt: snippet.createdAt,
+    }))
   },
 
-  findCollections(userId: string, query: string) {
-    return prisma.collection.findMany({
+  async findCollections(userId: string, query: string) {
+    const rows = await prisma.collection.findMany({
       where: collectionWhere(userId, query),
       select: collectionSelect,
       orderBy: { updatedAt: "desc" },
       take: SEARCH_CONFIG.limits.collections,
     })
+    return rankByRelevance(query, rows, (collection) => ({
+      title: collection.name,
+      description: collection.description,
+      updatedAt: collection.updatedAt,
+      createdAt: collection.createdAt,
+    }))
   },
 
-  findTags(userId: string, query: string) {
-    return prisma.tag.findMany({
+  async findTags(userId: string, query: string) {
+    const rows = await prisma.tag.findMany({
       where: tagWhere(userId, query),
       select: tagSelect,
       orderBy: { createdAt: "desc" },
       take: SEARCH_CONFIG.limits.tags,
     })
+    return rankByRelevance(query, rows, (tag) => ({
+      title: tag.name,
+      createdAt: tag.createdAt,
+    }))
   },
 }

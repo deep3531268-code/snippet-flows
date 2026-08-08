@@ -1,7 +1,7 @@
 import { Code2, Folder, Tag } from "lucide-react"
 
 import { searchAll } from "../actions"
-import type { SearchSection } from "../types"
+import type { SearchMode, SearchSection } from "../types"
 
 export const SEARCH_SECTIONS: SearchSection[] = [
   {
@@ -25,6 +25,14 @@ export const SEARCH_SECTIONS: SearchSection[] = [
     icon: Tag,
     results: [],
   },
+]
+
+export const SEARCH_MODES: ReadonlyArray<{ value: SearchMode; label: string }> = [
+  { value: "all", label: "All" },
+  ...SEARCH_SECTIONS.map((section) => ({
+    value: section.id as SearchMode,
+    label: section.title,
+  })),
 ]
 
 export interface SearchApi {

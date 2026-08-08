@@ -1,9 +1,10 @@
 import * as React from "react";
-import { FilePlus2, FolderPlus, Tag } from "lucide-react";
+import { Activity, FilePlus2, FolderPlus, Tag } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
   DashboardCard,
+  EmptyState,
   SectionHeader,
 } from "@/features/dashboard/ui";
 import {
@@ -11,75 +12,90 @@ import {
   dashboardRadius,
   dashboardTypography,
 } from "@/features/dashboard/theme";
+import { RelativeTime } from "@/features/shared/components/relative-time";
+import type { DashboardActivityEvent, DashboardActivityKind } from "../types";
 
-const ACTIVITY = [
-  {
+const ACTIVITY_KINDS: Record<
+  DashboardActivityKind,
+  { icon: typeof FilePlus2; iconClass: string }
+> = {
+  snippet: {
     icon: FilePlus2,
-    text: "Created snippet 'rate limiter'",
-    time: "2h ago",
     iconClass: "bg-[#2563eb]/15 text-[#7cb3ff] ring-1 ring-[#2563eb]/25",
   },
-  {
+  collection: {
     icon: FolderPlus,
-    text: "Added snippet to 'Backend'",
-    time: "5h ago",
     iconClass: "bg-[#10b981]/15 text-[#6ee7b7] ring-1 ring-[#10b981]/25",
   },
-  {
+  tag: {
     icon: Tag,
-    text: "Tagged snippet with 'typescript'",
-    time: "1d ago",
     iconClass: "bg-[#8b5cf6]/15 text-[#c4b5fd] ring-1 ring-[#8b5cf6]/25",
   },
-] as const;
+};
 
 function RecentActivity({
+  activity,
   className,
 }: {
+  activity: DashboardActivityEvent[];
   className?: string;
 }) {
   return (
     <DashboardCard className={cn("flex flex-col gap-5", className)}>
       <SectionHeader title="Recent Activity" description="What you've been up to" />
-      <ul className="relative flex flex-col">
-        <span
-          aria-hidden
-          className="absolute top-3 bottom-3 left-[15px] w-px bg-white/[0.07]"
+      {activity.length === 0 ? (
+        <EmptyState
+          icon={Activity}
+          title="No activity yet"
+          description="Your recent changes to snippets, collections, and tags will appear here."
+          className="min-h-[280px] flex-1 border-0 bg-transparent shadow-none"
         />
-        {ACTIVITY.map((item) => (
-          <li
-            key={item.text}
-            className="relative flex items-center gap-4 py-3 first:pt-0 last:pb-0"
-          >
-            <div
-              className={cn(
-                "relative z-10 flex size-8 shrink-0 items-center justify-center",
-                dashboardRadius.button,
-                item.iconClass,
-              )}
-            >
-              <item.icon
-                aria-hidden
-                className="size-4"
-              />
-            </div>
-            <div className="grid min-w-0 flex-1 gap-0.5">
-              <p
-                className={cn(
-                  dashboardTypography.body,
-                  dashboardColors.body,
-                  "truncate font-medium",
-                )}
+      ) : (
+        <ul className="relative flex flex-col">
+          <span
+            aria-hidden
+            className="absolute top-3 bottom-3 left-[15px] w-px bg-white/[0.07]"
+          />
+          {activity.map((item) => {
+            const { icon: Icon, iconClass } = ACTIVITY_KINDS[item.kind];
+            return (
+              <li
+                key={item.id}
+                className="relative flex items-center gap-4 py-3 first:pt-0 last:pb-0"
               >
-                {item.text}
-              </p>
-              <p className={cn(dashboardTypography.caption, dashboardColors.caption)}>
-                {item.time}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
+                <div
+                  className={cn(
+                    "relative z-10 flex size-8 shrink-0 items-center justify-center",
+                    dashboardRadius.button,
+                    iconClass,
+                  )}
+                >
+                  <Icon aria-hidden className="size-4" />
+                </div>
+                <div className="grid min-w-0 flex-1 gap-0.5">
+                  <p
+                    className={cn(
+                      dashboardTypography.body,
+                      dashboardColors.body,
+                      "truncate font-medium",
+                    )}
+                  >
+                    {item.text}
+                  </p>
+                  <p
+                    className={cn(
+                      dashboardTypography.caption,
+                      dashboardColors.caption,
+                    )}
+                  >
+                    <RelativeTime date={item.timestamp} />
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </DashboardCard>
   );
 }
