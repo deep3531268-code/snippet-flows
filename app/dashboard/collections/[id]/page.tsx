@@ -9,52 +9,15 @@ import {
   CollectionDetailsPage,
 } from "@/features/collections/components/collection-details-page"
 import { CollectionDetailsSkeleton } from "@/features/collections/components/collection-details-skeleton"
-import {
-  collectionService,
-  type CollectionWithRelations,
-} from "@/features/collections/service"
-import type { CollectionListItem } from "@/features/collections/types"
+import { collectionService } from "@/features/collections/service"
+import { toCollectionListItem } from "@/features/collections/serializer"
+import { snippetService } from "@/features/snippets/service"
+import { toSnippetListItem } from "@/features/snippets/serializer"
+import { tagService } from "@/features/tags/service"
 import type { SnippetListItem } from "@/features/snippets/types"
-import type { SnippetWithRelations } from "@/features/snippets/service"
 
 export const metadata: Metadata = {
   title: "Collection",
-}
-
-function toListItem(collection: CollectionWithRelations): CollectionListItem {
-  return {
-    id: collection.id,
-    name: collection.name,
-    description: collection.description,
-    isPublic: false,
-    accent: "blue",
-    snippetCount: collection._count.snippets,
-    tags: [],
-    createdAt: collection.createdAt.toISOString(),
-    updatedAt: collection.updatedAt.toISOString(),
-  }
-}
-
-function toSnippetListItem(snippet: SnippetWithRelations): SnippetListItem {
-  return {
-    id: snippet.id,
-    title: snippet.title,
-    description: snippet.description,
-    content: snippet.content,
-    language: snippet.language,
-    isPublic: snippet.isPublic,
-    slug: snippet.slug,
-    isFavorite: snippet.isFavorite,
-    isArchived: snippet.isArchived,
-    deletedAt: snippet.deletedAt?.toISOString() ?? null,
-    createdAt: snippet.createdAt.toISOString(),
-    updatedAt: snippet.updatedAt.toISOString(),
-    tags: snippet.tags.map(({ tag }) => ({ id: tag.id, name: tag.name })),
-    collections: snippet.collections.map(({ collection }) => ({
-      id: collection.id,
-      name: collection.name,
-    })),
-  }
 }
 
 async function CollectionDetailsFeed({
@@ -78,16 +41,20 @@ async function CollectionDetailsFeed({
     title: collection.name,
   })
 
-  const snippets = await collectionService.getCollectionSnippets(
-    user.id,
-    collection.id,
-    collection,
-  )
+  const [page, allTags] = await Promise.all([
+    snippetService.getCollectionSnippetsPage(user.id, collection.id),
+    tagService.getTagNames(user.id),
+  ])
+
+  const snippets: SnippetListItem[] = page.items.map(toSnippetListItem)
 
   return (
     <CollectionDetails
-      collection={toListItem(collection)}
-      snippets={snippets.map(toSnippetListItem)}
+      collection={toCollectionListItem(collection)}
+      snippets={snippets}
+      snippetsNextCursor={page.nextCursor}
+      snippetsHasMore={page.hasMore}
+      allTags={allTags}
     />
   )
 }

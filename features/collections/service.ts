@@ -2,6 +2,7 @@ import "server-only"
 
 import { snippetRepository } from "@/features/snippets/repository"
 import { SnippetNotFoundError } from "@/features/snippets/service"
+import type { Cursor } from "@/features/shared/pagination/types"
 import {
   collectionRepository,
   type CollectionFilterOptions,
@@ -25,6 +26,21 @@ export const collectionService = {
     options: CollectionFilterOptions = {},
   ) {
     return collectionRepository.findMany(userId, options)
+  },
+
+  listCollectionsPage(
+    userId: string,
+    options: CollectionFilterOptions = {},
+    cursor: Cursor | null = null,
+  ) {
+    return collectionRepository.findPage(userId, options, cursor)
+  },
+
+  countCollections(
+    userId: string,
+    options: CollectionFilterOptions = {},
+  ) {
+    return collectionRepository.count(userId, options)
   },
 
   async getCollection(userId: string, id: string) {

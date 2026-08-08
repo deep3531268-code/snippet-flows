@@ -1,6 +1,9 @@
 import "server-only"
 
 import { prisma } from "@/lib/prisma"
+import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import { loadPage } from "@/features/shared/pagination/load-page"
+import type { Cursor, CursorField, Page } from "@/features/shared/pagination/types"
 import type { Prisma } from "@prisma/client"
 import type { SnippetSort } from "./types"
 
@@ -64,8 +67,10 @@ function searchWhere(query: string): Prisma.SnippetWhereInput {
 export type SnippetFilterOptions = {
   query?: string
   language?: string
+  tag?: string
   visibility?: "public" | "private"
   recentlyUpdated?: boolean
+  favoritesOnly?: boolean
   sort?: SnippetSort
 }
 
@@ -87,6 +92,70 @@ const SORT_ORDER: Record<
   oldest: [{ isFavorite: "desc" }, { createdAt: "asc" }],
   az: [{ isFavorite: "desc" }, { title: "asc" }],
   za: [{ isFavorite: "desc" }, { title: "desc" }],
+  language: [{ isFavorite: "desc" }, { language: "asc" }],
+}
+
+// Server-side list ordering: matches the client's displayed order (pure sort on
+// the selected key) with a stable id tiebreaker for keyset pagination.
+const PAGE_SORT_ORDER: Record<
+  SnippetSort,
+  Prisma.SnippetOrderByWithRelationInput[]
+> = {
+  updated: [{ updatedAt: "desc" }, { id: "desc" }],
+  created: [{ createdAt: "desc" }, { id: "desc" }],
+  oldest: [{ createdAt: "asc" }, { id: "asc" }],
+  az: [{ title: "asc" }, { id: "asc" }],
+  za: [{ title: "desc" }, { id: "desc" }],
+  language: [{ language: "asc" }, { id: "asc" }],
+}
+
+const PAGE_SORT_FIELDS: Record<SnippetSort, CursorField[]> = {
+  updated: [
+    { key: "updatedAt", column: "updatedAt", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  created: [
+    { key: "createdAt", column: "createdAt", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  oldest: [
+    { key: "createdAt", column: "createdAt", direction: "asc" },
+    { key: "id", column: "id", direction: "asc" },
+  ],
+  az: [
+    { key: "title", column: "title", direction: "asc" },
+    { key: "id", column: "id", direction: "asc" },
+  ],
+  za: [
+    { key: "title", column: "title", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  language: [
+    { key: "language", column: "language", direction: "asc" },
+    { key: "id", column: "id", direction: "asc" },
+  ],
+}
+
+function buildWhere(
+  userId: string,
+  filter: SnippetFilter,
+  options: SnippetFilterOptions = {},
+  scope?: Prisma.SnippetWhereInput,
+): Prisma.SnippetWhereInput {
+  const conditions: Prisma.SnippetWhereInput[] = [filterWhere(userId, filter)]
+  if (options.query) conditions.push(searchWhere(options.query))
+  if (options.language) conditions.push({ language: options.language })
+  if (options.visibility) {
+    conditions.push({ isPublic: options.visibility === "public" })
+  }
+  if (options.recentlyUpdated) conditions.push(recentWhere())
+  if (options.tag) {
+    conditions.push({ tags: { some: { tag: { name: options.tag } } } })
+  }
+  if (options.favoritesOnly) conditions.push({ isFavorite: true })
+  if (scope) conditions.push(scope)
+
+  return conditions.length === 1 ? conditions[0] : { AND: conditions }
 }
 
 async function resolveTags(userId: string, names: string[]) {
@@ -116,19 +185,65 @@ export const snippetRepository = {
     filter: SnippetFilter,
     options: SnippetFilterOptions = {},
   ) {
-    const conditions: Prisma.SnippetWhereInput[] = [filterWhere(userId, filter)]
-    if (options.query) conditions.push(searchWhere(options.query))
-    if (options.language) conditions.push({ language: options.language })
-    if (options.visibility) {
-      conditions.push({ isPublic: options.visibility === "public" })
-    }
-    if (options.recentlyUpdated) conditions.push(recentWhere())
-
     return prisma.snippet.findMany({
-      where:
-        conditions.length === 1 ? conditions[0] : { AND: conditions },
+      where: buildWhere(userId, filter, options),
       include: snippetInclude,
       orderBy: SORT_ORDER[options.sort ?? "updated"],
+    })
+  },
+
+  findPage(
+    userId: string,
+    filter: SnippetFilter,
+    options: SnippetFilterOptions = {},
+    cursor: Cursor | null = null,
+    scope?: Prisma.SnippetWhereInput,
+  ): Promise<Page<SnippetWithRelations>> {
+    const sort = options.sort ?? "updated"
+    return loadPage({
+      where: buildWhere(userId, filter, options, scope),
+      orderBy: PAGE_SORT_ORDER[sort],
+      cursorFields: PAGE_SORT_FIELDS[sort],
+      cursor,
+      pageSize: PAGINATION_CONFIG.snippetPageSize,
+      findMany: (args) =>
+        prisma.snippet.findMany({ ...args, include: snippetInclude }),
+    })
+  },
+
+  findByCollectionPage(
+    userId: string,
+    collectionId: string,
+    options: SnippetFilterOptions = {},
+    cursor: Cursor | null = null,
+  ) {
+    return this.findPage(userId, "all", options, cursor, {
+      collections: {
+        some: { collectionId, collection: { userId } },
+      },
+    })
+  },
+
+  findByTagPage(
+    userId: string,
+    tagId: string,
+    options: SnippetFilterOptions = {},
+    cursor: Cursor | null = null,
+  ) {
+    return this.findPage(userId, "all", options, cursor, {
+      tags: {
+        some: { tagId, tag: { userId } },
+      },
+    })
+  },
+
+  count(
+    userId: string,
+    filter: SnippetFilter,
+    options: SnippetFilterOptions = {},
+  ) {
+    return prisma.snippet.count({
+      where: buildWhere(userId, filter, options),
     })
   },
 

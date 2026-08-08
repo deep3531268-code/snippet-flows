@@ -6,20 +6,21 @@ import { useRouter } from "next/navigation"
 import { Tag, Plus, Upload } from "lucide-react"
 import { toast } from "sonner"
 
-import { useDebounce, useLocalStorage } from "@/features/shared/hooks"
+import { useDebounce, useInfiniteList, useLocalStorage } from "@/features/shared/hooks"
 import { DASHBOARD_STORAGE } from "@/features/settings/config"
 import { DashboardBadge, DashboardButton, EmptyState } from "@/features/dashboard/ui"
+import { InfiniteScrollFooter } from "@/features/shared/components"
 import { StaggerContainer, StaggerItem } from "@/features/shared/motion"
 import { TagCard } from "./tag-card"
 import { TagToolbar } from "./tag-toolbar"
 import { TagBulkToolbar } from "./tag-bulk-toolbar"
 import { TagDialog } from "./tag-dialog"
 import { TagDeleteDialog } from "./tag-delete-dialog"
-import { bulkDeleteTags, bulkDuplicateTags, deleteTag, duplicateTag } from "../actions"
+import { bulkDeleteTags, bulkDuplicateTags, deleteTag, duplicateTag, loadMoreTags } from "../actions"
 import {
   DEFAULT_TAG_FILTERS,
   TAG_SORT_OPTIONS,
-  filterAndSortTags,
+  hasActiveTagFilters,
   type TagListFilters,
   type TagListSort,
   type TagView,
@@ -54,15 +55,18 @@ function validateFilters(raw: string | null): TagListFilters {
   }
 }
 
-function TagList({ tags }: { tags: TagListItem[] }) {
+function TagList({
+  tags,
+  nextCursor,
+  hasMore,
+  totalCount,
+}: {
+  tags: TagListItem[]
+  nextCursor: string | null
+  hasMore: boolean
+  totalCount?: number
+}) {
   const router = useRouter()
-
-  const [items, setItems] = useState<TagListItem[]>(tags)
-  const [prevTags, setPrevTags] = useState<TagListItem[]>(tags)
-  if (prevTags !== tags) {
-    setPrevTags(tags)
-    setItems(tags)
-  }
 
   const [view, setView] = useLocalStorage<TagView>(
     DASHBOARD_STORAGE.tagView.key,
@@ -108,10 +112,32 @@ function TagList({ tags }: { tags: TagListItem[] }) {
     setSearchInput(filters.query)
   }, [filters.query])
 
-  const visible = useMemo(
-    () => filterAndSortTags(items, filters, sort),
-    [items, filters, sort],
+  const loadPage = useCallback(
+    (cursor: string | null) =>
+      loadMoreTags({ cursor, query: filters.query, sort }),
+    [filters.query, sort],
   )
+
+  const resetKey = `${serializeFilters(filters)}|${sort}`
+  const reconcileProps = !hasActiveTagFilters(filters) && sort === "updated"
+
+  const {
+    items,
+    setItems,
+    hasMore: liveHasMore,
+    initialLoading,
+    loadingMore,
+    error,
+    retry,
+    sentinelRef,
+  } = useInfiniteList<TagListItem>({
+    initialItems: tags,
+    initialNextCursor: nextCursor,
+    initialHasMore: hasMore,
+    loadPage,
+    resetKey,
+    reconcileProps,
+  })
 
   const selectedItems = useMemo(
     () => items.filter((item) => selected.has(item.id)),
@@ -119,7 +145,7 @@ function TagList({ tags }: { tags: TagListItem[] }) {
   )
 
   const allVisibleSelected =
-    visible.length > 0 && visible.every((item) => selected.has(item.id))
+    items.length > 0 && items.every((item) => selected.has(item.id))
 
   useEffect(() => {
     const ids = new Set(items.map((item) => item.id))
@@ -152,7 +178,7 @@ function TagList({ tags }: { tags: TagListItem[] }) {
     if (allVisibleSelected) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(visible.map((item) => item.id)))
+      setSelected(new Set(items.map((item) => item.id)))
     }
   }
 
@@ -402,7 +428,8 @@ function TagList({ tags }: { tags: TagListItem[] }) {
               Organize snippets with lightweight labels.
             </p>
             <DashboardBadge variant="secondary">
-              {items.length} {items.length === 1 ? "tag" : "tags"}
+              {(totalCount ?? items.length)}{" "}
+              {(totalCount ?? items.length) === 1 ? "tag" : "tags"}
             </DashboardBadge>
           </div>
         </div>
@@ -421,7 +448,7 @@ function TagList({ tags }: { tags: TagListItem[] }) {
         onViewChange={setView}
         search={searchInput}
         onSearchChange={setSearchInput}
-        selectable={visible.length > 0}
+        selectable={items.length > 0}
         allSelected={allVisibleSelected}
         onToggleSelectAll={toggleSelectAll}
       />
@@ -436,32 +463,34 @@ function TagList({ tags }: { tags: TagListItem[] }) {
         />
       ) : null}
 
-      {items.length === 0 ? (
-        <EmptyState
-          icon={Tag}
-          title="No tags yet"
-          description="Organize snippets by creating tags."
-          className="min-h-[320px] flex-1"
-        >
-          <DashboardButton onClick={openCreate}>
-            <Tag className="size-4" />
-            Create Tag
-          </DashboardButton>
-          <DashboardButton variant="secondary" onClick={handleImport}>
-            <Upload className="size-4" />
-            Import Tags
-          </DashboardButton>
-        </EmptyState>
-      ) : visible.length === 0 ? (
-        <EmptyState
-          icon={Tag}
-          title="No matching tags"
-          description="Try adjusting your search or filters."
-          className="min-h-[320px] flex-1"
-        />
+      {initialLoading && items.length === 0 ? null : items.length === 0 ? (
+        hasActiveTagFilters(filters) ? (
+          <EmptyState
+            icon={Tag}
+            title="No matching tags"
+            description="Try adjusting your search or filters."
+            className="min-h-[320px] flex-1"
+          />
+        ) : (
+          <EmptyState
+            icon={Tag}
+            title="No tags yet"
+            description="Organize snippets by creating tags."
+            className="min-h-[320px] flex-1"
+          >
+            <DashboardButton onClick={openCreate}>
+              <Tag className="size-4" />
+              Create Tag
+            </DashboardButton>
+            <DashboardButton variant="secondary" onClick={handleImport}>
+              <Upload className="size-4" />
+              Import Tags
+            </DashboardButton>
+          </EmptyState>
+        )
       ) : view === "grid" ? (
         <StaggerContainer className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((tag) => (
+          {items.map((tag) => (
             <StaggerItem key={tag.id} className="h-full">
               <TagCard
                 tag={tag}
@@ -476,7 +505,7 @@ function TagList({ tags }: { tags: TagListItem[] }) {
         </StaggerContainer>
       ) : (
         <StaggerContainer className="flex flex-col gap-2">
-          {visible.map((tag) => (
+          {items.map((tag) => (
             <StaggerItem key={tag.id}>
               <TagCard
                 tag={tag}
@@ -490,6 +519,17 @@ function TagList({ tags }: { tags: TagListItem[] }) {
           ))}
         </StaggerContainer>
       )}
+
+      {items.length > 0 || initialLoading ? (
+        <InfiniteScrollFooter
+          sentinelRef={sentinelRef}
+          initialLoading={initialLoading}
+          loadingMore={loadingMore}
+          hasMore={liveHasMore}
+          error={error}
+          onRetry={retry}
+        />
+      ) : null}
 
       <TagDialog
         open={dialogOpen}

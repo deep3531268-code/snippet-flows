@@ -1,6 +1,7 @@
 import "server-only"
 
 import { snippetRepository } from "@/features/snippets/repository"
+import type { Cursor } from "@/features/shared/pagination/types"
 import {
   tagRepository,
   type TagFilterOptions,
@@ -21,6 +22,23 @@ export class TagNotFoundError extends Error {
 export const tagService = {
   listTags(userId: string, options: TagFilterOptions = {}) {
     return tagRepository.findMany(userId, options)
+  },
+
+  listTagsPage(
+    userId: string,
+    options: TagFilterOptions = {},
+    cursor: Cursor | null = null,
+  ) {
+    return tagRepository.findPage(userId, options, cursor)
+  },
+
+  countTags(userId: string, options: TagFilterOptions = {}) {
+    return tagRepository.count(userId, options)
+  },
+
+  async getTagNames(userId: string): Promise<string[]> {
+    const rows = await tagRepository.findNames(userId)
+    return rows.map((row) => row.name)
   },
 
   async getTag(userId: string, id: string) {

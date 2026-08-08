@@ -13,7 +13,7 @@ import {
   Upload,
 } from "lucide-react"
 
-import { useDebounce, useLocalStorage } from "@/features/shared/hooks"
+import { useDebounce, useInfiniteList, useLocalStorage } from "@/features/shared/hooks"
 import { recordSnippetViewed } from "@/features/recent/actions"
 import {
   DashboardBadge,
@@ -21,6 +21,7 @@ import {
   DashboardCard,
   EmptyState,
 } from "@/features/dashboard/ui"
+import { InfiniteScrollFooter } from "@/features/shared/components"
 import { StaggerContainer, StaggerItem } from "@/features/shared/motion"
 import {
   bulkArchiveSnippets,
@@ -28,6 +29,7 @@ import {
   bulkFavoriteSnippets,
   deleteSnippet,
   duplicateSnippet,
+  loadMoreSnippets,
   toggleSnippetFavorite,
 } from "@/features/snippets/actions"
 import {
@@ -37,8 +39,7 @@ import {
 import { removeSnippetFromTag } from "@/features/tags/actions"
 import {
   DEFAULT_FILTERS,
-  filterAndSortSnippets,
-  getSnippetTags,
+  hasActiveFilters,
   SORT_OPTIONS,
   type SnippetListFilters,
   type SnippetListSort,
@@ -92,6 +93,11 @@ function validateFilters(raw: string | null): SnippetListFilters {
 
 function SnippetList({
   snippets,
+  nextCursor,
+  hasMore,
+  totalCount,
+  favoritesCount,
+  allTags,
   collectionId,
   onCollectionSnippetsChange,
   tagId,
@@ -99,29 +105,21 @@ function SnippetList({
   lockedTag,
 }: {
   snippets: SnippetListItem[]
+  nextCursor: string | null
+  hasMore: boolean
+  totalCount?: number
+  favoritesCount?: number
+  allTags: string[]
   collectionId?: string
-  onCollectionSnippetsChange?: (
-    snippets: SnippetListItem[],
-    snippetCount: number,
-  ) => void
+  onCollectionSnippetsChange?: (snippets: SnippetListItem[]) => void
   tagId?: string
-  onTagSnippetsChange?: (
-    snippets: SnippetListItem[],
-    snippetCount: number,
-  ) => void
+  onTagSnippetsChange?: (snippets: SnippetListItem[]) => void
   lockedTag?: string
 }) {
   const router = useRouter()
   const isCollectionView = Boolean(collectionId)
   const isTagView = Boolean(tagId)
   const isContextView = isCollectionView || isTagView
-
-  const [items, setItems] = useState<SnippetListItem[]>(snippets)
-  const [prevSnippets, setPrevSnippets] = useState<SnippetListItem[]>(snippets)
-  if (prevSnippets !== snippets) {
-    setPrevSnippets(snippets)
-    setItems(snippets)
-  }
 
   const [view, setView] = useLocalStorage<SnippetView>(
     DASHBOARD_STORAGE.snippetView.key,
@@ -171,6 +169,43 @@ function SnippetList({
     setSearchInput(filters.query)
   }, [filters.query])
 
+  const loadPage = useCallback(
+    (cursor: string | null) =>
+      loadMoreSnippets({
+        cursor,
+        query: filters.query,
+        language: filters.language,
+        tag: filters.tag,
+        favoritesOnly: filters.favoritesOnly,
+        visibility: filters.visibility,
+        sort,
+        collectionId,
+        tagId,
+      }),
+    [filters, sort, collectionId, tagId],
+  )
+
+  const resetKey = `${serializeFilters(filters)}|${sort}|${collectionId ?? ""}|${tagId ?? ""}`
+  const reconcileProps = !hasActiveFilters(filters) && sort === "updated"
+
+  const {
+    items,
+    setItems,
+    hasMore: liveHasMore,
+    initialLoading,
+    loadingMore,
+    error,
+    retry,
+    sentinelRef,
+  } = useInfiniteList<SnippetListItem>({
+    initialItems: snippets,
+    initialNextCursor: nextCursor,
+    initialHasMore: hasMore,
+    loadPage,
+    resetKey,
+    reconcileProps,
+  })
+
   useEffect(() => {
     const ids = new Set(items.map((item) => item.id))
     setSelected((current) => {
@@ -184,21 +219,14 @@ function SnippetList({
     })
   }, [items])
 
-  const tags = useMemo(() => getSnippetTags(items), [items])
-  const visible = useMemo(
-    () => filterAndSortSnippets(items, filters, sort),
-    [items, filters, sort],
-  )
-  const favoritesCount = useMemo(
-    () => items.filter((item) => item.isFavorite).length,
-    [items],
-  )
   const selectedItems = useMemo(
     () => items.filter((item) => selected.has(item.id)),
     [items, selected],
   )
+  const favoriteBadgeCount =
+    favoritesCount ?? items.filter((item) => item.isFavorite).length
   const allVisibleSelected =
-    visible.length > 0 && visible.every((item) => selected.has(item.id))
+    items.length > 0 && items.every((item) => selected.has(item.id))
   const allFavorited =
     selectedItems.length > 0 && selectedItems.every((item) => item.isFavorite)
   const hasOtherFilters = Boolean(
@@ -231,7 +259,7 @@ function SnippetList({
     if (allVisibleSelected) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(visible.map((item) => item.id)))
+      setSelected(new Set(items.map((item) => item.id)))
     }
   }
 
@@ -450,7 +478,7 @@ function SnippetList({
           )
         : previous.filter((item) => item.id !== snippet.id)
       setItems(next)
-      onCollectionSnippetsChange?.(next, next.length)
+      onCollectionSnippetsChange?.(next)
 
       const formData = new FormData()
       formData.set("snippetId", snippet.id)
@@ -458,7 +486,7 @@ function SnippetList({
       const result = await setSnippetCollections(formData)
       if (result?.error) {
         setItems(previous)
-        onCollectionSnippetsChange?.(previous, previous.length)
+        onCollectionSnippetsChange?.(previous)
         toast.error(result.error)
         return
       }
@@ -474,7 +502,7 @@ function SnippetList({
       const previous = items
       const next = previous.filter((item) => item.id !== snippet.id)
       setItems(next)
-      onCollectionSnippetsChange?.(next, next.length)
+      onCollectionSnippetsChange?.(next)
 
       const formData = new FormData()
       formData.set("collectionId", collectionId)
@@ -482,7 +510,7 @@ function SnippetList({
       const result = await removeSnippetFromCollection(formData)
       if (result?.error) {
         setItems(previous)
-        onCollectionSnippetsChange?.(previous, previous.length)
+        onCollectionSnippetsChange?.(previous)
         toast.error(result.error)
         return
       }
@@ -498,7 +526,7 @@ function SnippetList({
       const previous = items
       const next = previous.filter((item) => item.id !== snippet.id)
       setItems(next)
-      onTagSnippetsChange?.(next, next.length)
+      onTagSnippetsChange?.(next)
 
       const formData = new FormData()
       formData.set("tagId", tagId)
@@ -506,7 +534,7 @@ function SnippetList({
       const result = await removeSnippetFromTag(formData)
       if (result?.error) {
         setItems(previous)
-        onTagSnippetsChange?.(previous, previous.length)
+        onTagSnippetsChange?.(previous)
         toast.error(result.error)
         return
       }
@@ -576,7 +604,6 @@ function SnippetList({
     deleting,
     bulkDelete,
     selected,
-    visible,
     allVisibleSelected,
     clearSelection,
     toggleSelectAll,
@@ -590,7 +617,6 @@ function SnippetList({
       deleting,
       bulkDelete,
       selected,
-      visible,
       allVisibleSelected,
       clearSelection,
       toggleSelectAll,
@@ -639,28 +665,10 @@ function SnippetList({
   }, [])
 
   const renderEmptyState = () => {
+    if (initialLoading && items.length === 0) return null
+
     if (items.length === 0) {
       if (isContextView) return null
-      return (
-        <EmptyState
-          icon={FileCode2}
-          title="No snippets yet"
-          description="Create your first snippet to get started."
-          className="min-h-[320px] flex-1"
-        >
-          <DashboardButton onClick={openCreate}>
-            <Plus className="size-4" />
-            Create Snippet
-          </DashboardButton>
-          <DashboardButton variant="secondary" onClick={handleImport}>
-            <Upload className="size-4" />
-            Import Snippets
-          </DashboardButton>
-        </EmptyState>
-      )
-    }
-
-    if (visible.length === 0) {
       if (filters.favoritesOnly && !hasOtherFilters) {
         return (
           <EmptyState
@@ -678,16 +686,35 @@ function SnippetList({
           </EmptyState>
         )
       }
+      if (hasActiveFilters(filters)) {
+        return (
+          <EmptyState
+            icon={SearchX}
+            title="No snippets found"
+            description="Try adjusting your search or filters."
+            className="min-h-[320px] flex-1"
+          >
+            <DashboardButton variant="secondary" onClick={clearFilters}>
+              <RotateCcw className="size-4" />
+              Clear Filters
+            </DashboardButton>
+          </EmptyState>
+        )
+      }
       return (
         <EmptyState
-          icon={SearchX}
-          title="No snippets found"
-          description="Try adjusting your search or filters."
+          icon={FileCode2}
+          title="No snippets yet"
+          description="Create your first snippet to get started."
           className="min-h-[320px] flex-1"
         >
-          <DashboardButton variant="secondary" onClick={clearFilters}>
-            <RotateCcw className="size-4" />
-            Clear Filters
+          <DashboardButton onClick={openCreate}>
+            <Plus className="size-4" />
+            Create Snippet
+          </DashboardButton>
+          <DashboardButton variant="secondary" onClick={handleImport}>
+            <Upload className="size-4" />
+            Import Snippets
           </DashboardButton>
         </EmptyState>
       )
@@ -715,7 +742,7 @@ function SnippetList({
     if (view === "grid") {
       return (
         <StaggerContainer className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((snippet) => (
+          {items.map((snippet) => (
             <StaggerItem key={snippet.id} className="h-full">
               <SnippetCard {...cardProps(snippet)} />
             </StaggerItem>
@@ -727,7 +754,7 @@ function SnippetList({
     return (
       <DashboardCard className="flex flex-col gap-0.5 p-2">
         <StaggerContainer className="flex flex-col gap-0.5">
-          {visible.map((snippet) => (
+          {items.map((snippet) => (
             <StaggerItem key={snippet.id}>
               <SnippetRow {...cardProps(snippet)} />
             </StaggerItem>
@@ -750,11 +777,12 @@ function SnippetList({
                 Store, organize, and share your code snippets.
               </p>
               <DashboardBadge variant="secondary">
-                {items.length} {items.length === 1 ? "snippet" : "snippets"}
+                {(totalCount ?? items.length)}{" "}
+                {(totalCount ?? items.length) === 1 ? "snippet" : "snippets"}
               </DashboardBadge>
               <DashboardBadge variant="warning">
                 <Star className="size-3 fill-[#fbbf24] text-[#fbbf24]" />
-                {favoritesCount}
+                {favoriteBadgeCount}
               </DashboardBadge>
             </div>
           </div>
@@ -772,10 +800,10 @@ function SnippetList({
         onSortChange={setSort}
         view={view}
         onViewChange={setView}
-        tags={tags}
+        tags={allTags}
         search={searchInput}
         onSearchChange={setSearchInput}
-        selectable={visible.length > 0 && !isContextView}
+        selectable={items.length > 0 && !isContextView}
         allSelected={allVisibleSelected}
         onToggleSelectAll={toggleSelectAll}
       />
@@ -796,6 +824,17 @@ function SnippetList({
       ) : null}
 
       {renderEmptyState()}
+
+      {items.length > 0 || initialLoading ? (
+        <InfiniteScrollFooter
+          sentinelRef={sentinelRef}
+          initialLoading={initialLoading}
+          loadingMore={loadingMore}
+          hasMore={liveHasMore}
+          error={error}
+          onRetry={retry}
+        />
+      ) : null}
 
       <SnippetDialog
         snippet={editing}

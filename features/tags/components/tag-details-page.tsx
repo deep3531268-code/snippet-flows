@@ -39,9 +39,15 @@ import { cn } from "@/lib/utils"
 function TagDetails({
   tag,
   snippets,
+  snippetsNextCursor,
+  snippetsHasMore,
+  allTags,
 }: {
   tag: TagListItem
   snippets: SnippetListItem[]
+  snippetsNextCursor: string | null
+  snippetsHasMore: boolean
+  allTags: string[]
 }) {
   const router = useRouter()
 
@@ -137,12 +143,8 @@ function TagDetails({
     router.refresh()
   }
 
-  const handleTagSnippetsChange = (
-    next: SnippetListItem[],
-    snippetCount: number,
-  ) => {
+  const handleTagSnippetsChange = (next: SnippetListItem[]) => {
     setSnippetItems(next)
-    setCurrent((existing) => ({ ...existing, snippetCount }))
   }
 
   return (
@@ -234,6 +236,9 @@ function TagDetails({
       ) : (
         <SnippetList
           snippets={snippetItems}
+          nextCursor={snippetsNextCursor}
+          hasMore={snippetsHasMore}
+          allTags={allTags}
           tagId={current.id}
           onTagSnippetsChange={handleTagSnippetsChange}
           lockedTag={current.name}

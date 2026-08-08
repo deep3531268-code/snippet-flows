@@ -8,7 +8,7 @@ export type SnippetFilters = {
   recentlyUpdated?: boolean
 }
 
-export type SnippetSort = "updated" | "created" | "oldest" | "az" | "za"
+export type SnippetSort = "updated" | "created" | "oldest" | "az" | "za" | "language"
 
 export type SnippetExportScope = "all" | "favorites" | "archived"
 

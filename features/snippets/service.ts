@@ -8,6 +8,7 @@ import {
   type SnippetFilterOptions,
   type SnippetWithRelations,
 } from "./repository"
+import type { Cursor } from "@/features/shared/pagination/types"
 import {
   type CreateSnippetInput,
   type UpdateSnippetInput,
@@ -46,6 +47,46 @@ export const snippetService = {
     options: SnippetFilterOptions = {},
   ) {
     return snippetRepository.findMany(userId, filter, options)
+  },
+
+  listSnippetsPage(
+    userId: string,
+    filter: SnippetFilter = "all",
+    options: SnippetFilterOptions = {},
+    cursor: Cursor | null = null,
+  ) {
+    return snippetRepository.findPage(userId, filter, options, cursor)
+  },
+
+  getCollectionSnippetsPage(
+    userId: string,
+    collectionId: string,
+    options: SnippetFilterOptions = {},
+    cursor: Cursor | null = null,
+  ) {
+    return snippetRepository.findByCollectionPage(
+      userId,
+      collectionId,
+      options,
+      cursor,
+    )
+  },
+
+  getTagSnippetsPage(
+    userId: string,
+    tagId: string,
+    options: SnippetFilterOptions = {},
+    cursor: Cursor | null = null,
+  ) {
+    return snippetRepository.findByTagPage(userId, tagId, options, cursor)
+  },
+
+  countSnippets(
+    userId: string,
+    filter: SnippetFilter = "all",
+    options: SnippetFilterOptions = {},
+  ) {
+    return snippetRepository.count(userId, filter, options)
   },
 
   getSnippetOptions(userId: string) {

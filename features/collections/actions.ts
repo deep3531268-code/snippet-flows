@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
 import { recentService } from "@/features/recent/service"
+import { decodeCursor } from "@/features/shared/pagination/cursor"
+import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import type { Page } from "@/features/shared/pagination/types"
 import {
   addSnippetsToCollectionSchema,
   bulkDeleteCollectionsSchema,
@@ -14,7 +17,43 @@ import {
   setSnippetCollectionsSchema,
   updateCollectionSchema,
 } from "./schemas"
+import { toCollectionListItem } from "./serializer"
 import { collectionService } from "./service"
+import type { CollectionListItem, CollectionSort } from "./types"
+
+const COLLECTION_SORTS: CollectionSort[] = [
+  "updated",
+  "created",
+  "az",
+  "za",
+  "count",
+]
+
+export type CollectionPageArgs = {
+  cursor: string | null
+  query?: string
+  sort?: CollectionSort
+}
+
+export async function loadMoreCollections(
+  args: CollectionPageArgs,
+): Promise<Page<CollectionListItem>> {
+  const userId = await requireUserId()
+  const cursor = decodeCursor(args.cursor)
+  const page = await collectionService.listCollectionsPage(
+    userId,
+    {
+      query: args.query
+        ? args.query.trim().slice(0, PAGINATION_CONFIG.maxQueryLength)
+        : undefined,
+      sort: COLLECTION_SORTS.includes(args.sort ?? "updated")
+        ? args.sort
+        : undefined,
+    },
+    cursor,
+  )
+  return { ...page, items: page.items.map(toCollectionListItem) }
+}
 
 export type CollectionFormState = {
   error?: string

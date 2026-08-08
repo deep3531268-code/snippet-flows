@@ -3,41 +3,44 @@ import type { Metadata } from "next"
 
 import { requireUser } from "@/features/auth/session"
 import { TagsPage } from "@/features/tags"
+import { tagService } from "@/features/tags/service"
+import { toTagListItem } from "@/features/tags/serializer"
 import { TagList } from "@/features/tags/components/tag-list"
 import { TagsFeedSkeleton } from "@/features/tags/components/tag-card-skeleton"
-import {
-  tagService,
-  type TagWithRelations,
-} from "@/features/tags/service"
 import type { TagListItem } from "@/features/tags/types"
 
 export const metadata: Metadata = {
   title: "Tags",
 }
 
-function toListItem(tag: TagWithRelations): TagListItem {
-  return {
-    id: tag.id,
-    name: tag.name,
-    color: "blue",
-    snippetCount: tag._count.snippets,
-    createdAt: tag.createdAt.toISOString(),
-    updatedAt: tag.createdAt.toISOString(),
-  }
-}
-
 async function TagsFeed() {
   const user = await requireUser()
 
   let tags: TagListItem[] = []
+  let nextCursor: string | null = null
+  let hasMore = false
+  let totalCount = 0
   try {
-    const data = await tagService.listTags(user.id)
-    tags = data.map(toListItem)
+    const [page, count] = await Promise.all([
+      tagService.listTagsPage(user.id),
+      tagService.countTags(user.id),
+    ])
+    tags = page.items.map(toTagListItem)
+    nextCursor = page.nextCursor
+    hasMore = page.hasMore
+    totalCount = count
   } catch {
-    tags = []
+    // Render an empty page so the UI stays interactive if the backend is down.
   }
 
-  return <TagList tags={tags} />
+  return (
+    <TagList
+      tags={tags}
+      nextCursor={nextCursor}
+      hasMore={hasMore}
+      totalCount={totalCount}
+    />
+  )
 }
 
 export default async function TagsRoute() {

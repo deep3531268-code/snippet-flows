@@ -1,6 +1,13 @@
 import "server-only"
 
 import { prisma } from "@/lib/prisma"
+import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import { loadPage } from "@/features/shared/pagination/load-page"
+import type {
+  Cursor,
+  CursorField,
+  Page,
+} from "@/features/shared/pagination/types"
 import type { Prisma } from "@prisma/client"
 import type { CollectionSort } from "./types"
 
@@ -44,16 +51,78 @@ const SORT_ORDER: Record<CollectionSort, Prisma.CollectionOrderByWithRelationInp
     count: [{ snippets: { _count: "desc" } }],
   }
 
+const PAGE_SORT_ORDER: Record<
+  CollectionSort,
+  Prisma.CollectionOrderByWithRelationInput[]
+> = {
+  updated: [{ updatedAt: "desc" }, { id: "desc" }],
+  created: [{ createdAt: "desc" }, { id: "desc" }],
+  az: [{ name: "asc" }, { id: "asc" }],
+  za: [{ name: "desc" }, { id: "desc" }],
+  count: [{ snippets: { _count: "desc" } }, { id: "desc" }],
+}
+
+const PAGE_SORT_FIELDS: Record<CollectionSort, CursorField[]> = {
+  updated: [
+    { key: "updatedAt", column: "updatedAt", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  created: [
+    { key: "createdAt", column: "createdAt", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  az: [
+    { key: "name", column: "name", direction: "asc" },
+    { key: "id", column: "id", direction: "asc" },
+  ],
+  za: [
+    { key: "name", column: "name", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  count: [
+    { key: "count", relationCount: "snippets", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+}
+
+function buildWhere(
+  userId: string,
+  options: CollectionFilterOptions = {},
+): Prisma.CollectionWhereInput {
+  const conditions: Prisma.CollectionWhereInput[] = [{ userId }]
+  if (options.query) conditions.push(searchWhere(options.query))
+  return conditions.length === 1 ? conditions[0] : { AND: conditions }
+}
+
 export const collectionRepository = {
   findMany(userId: string, options: CollectionFilterOptions = {}) {
-    const conditions: Prisma.CollectionWhereInput[] = [{ userId }]
-    if (options.query) conditions.push(searchWhere(options.query))
-
     return prisma.collection.findMany({
-      where:
-        conditions.length === 1 ? conditions[0] : { AND: conditions },
+      where: buildWhere(userId, options),
       include: collectionInclude,
       orderBy: SORT_ORDER[options.sort ?? "updated"],
+    })
+  },
+
+  findPage(
+    userId: string,
+    options: CollectionFilterOptions = {},
+    cursor: Cursor | null = null,
+  ): Promise<Page<CollectionWithRelations>> {
+    const sort = options.sort ?? "updated"
+    return loadPage({
+      where: buildWhere(userId, options),
+      orderBy: PAGE_SORT_ORDER[sort],
+      cursorFields: PAGE_SORT_FIELDS[sort],
+      cursor,
+      pageSize: PAGINATION_CONFIG.collectionPageSize,
+      findMany: (args) =>
+        prisma.collection.findMany({ ...args, include: collectionInclude }),
+    })
+  },
+
+  count(userId: string, options: CollectionFilterOptions = {}) {
+    return prisma.collection.count({
+      where: buildWhere(userId, options),
     })
   },
 

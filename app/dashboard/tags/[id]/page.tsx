@@ -8,49 +8,14 @@ import {
   TagDetailsPage,
 } from "@/features/tags/components/tag-details-page"
 import { TagDetailsSkeleton } from "@/features/tags/components/tag-details-skeleton"
-import {
-  tagService,
-  type TagWithRelations,
-} from "@/features/tags/service"
-import type { TagListItem } from "@/features/tags/types"
+import { tagService } from "@/features/tags/service"
+import { toTagListItem } from "@/features/tags/serializer"
+import { snippetService } from "@/features/snippets/service"
+import { toSnippetListItem } from "@/features/snippets/serializer"
 import type { SnippetListItem } from "@/features/snippets/types"
-import type { SnippetWithRelations } from "@/features/snippets/service"
 
 export const metadata: Metadata = {
   title: "Tag",
-}
-
-function toListItem(tag: TagWithRelations): TagListItem {
-  return {
-    id: tag.id,
-    name: tag.name,
-    color: "blue",
-    snippetCount: tag._count.snippets,
-    createdAt: tag.createdAt.toISOString(),
-    updatedAt: tag.createdAt.toISOString(),
-  }
-}
-
-function toSnippetListItem(snippet: SnippetWithRelations): SnippetListItem {
-  return {
-    id: snippet.id,
-    title: snippet.title,
-    description: snippet.description,
-    content: snippet.content,
-    language: snippet.language,
-    isPublic: snippet.isPublic,
-    slug: snippet.slug,
-    isFavorite: snippet.isFavorite,
-    isArchived: snippet.isArchived,
-    deletedAt: snippet.deletedAt?.toISOString() ?? null,
-    createdAt: snippet.createdAt.toISOString(),
-    updatedAt: snippet.updatedAt.toISOString(),
-    tags: snippet.tags.map(({ tag }) => ({ id: tag.id, name: tag.name })),
-    collections: snippet.collections.map(({ collection }) => ({
-      id: collection.id,
-      name: collection.name,
-    })),
-  }
 }
 
 async function TagDetailsFeed({
@@ -67,12 +32,20 @@ async function TagDetailsFeed({
     notFound()
   }
 
-  const snippets = await tagService.getTagSnippets(user.id, tag.id, tag)
+  const [page, allTags] = await Promise.all([
+    snippetService.getTagSnippetsPage(user.id, tag.id),
+    tagService.getTagNames(user.id),
+  ])
+
+  const snippets: SnippetListItem[] = page.items.map(toSnippetListItem)
 
   return (
     <TagDetails
-      tag={toListItem(tag)}
-      snippets={snippets.map(toSnippetListItem)}
+      tag={toTagListItem(tag)}
+      snippets={snippets}
+      snippetsNextCursor={page.nextCursor}
+      snippetsHasMore={page.hasMore}
+      allTags={allTags}
     />
   )
 }

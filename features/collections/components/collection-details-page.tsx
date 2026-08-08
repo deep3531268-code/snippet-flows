@@ -39,9 +39,15 @@ import { cn } from "@/lib/utils"
 function CollectionDetails({
   collection,
   snippets,
+  snippetsNextCursor,
+  snippetsHasMore,
+  allTags,
 }: {
   collection: CollectionListItem
   snippets: SnippetListItem[]
+  snippetsNextCursor: string | null
+  snippetsHasMore: boolean
+  allTags: string[]
 }) {
   const router = useRouter()
 
@@ -142,12 +148,8 @@ function CollectionDetails({
     router.refresh()
   }
 
-  const handleCollectionSnippetsChange = (
-    next: SnippetListItem[],
-    snippetCount: number,
-  ) => {
+  const handleCollectionSnippetsChange = (next: SnippetListItem[]) => {
     setSnippetItems(next)
-    setCurrent((existing) => ({ ...existing, snippetCount }))
   }
 
   return (
@@ -255,6 +257,9 @@ function CollectionDetails({
       ) : (
         <SnippetList
           snippets={snippetItems}
+          nextCursor={snippetsNextCursor}
+          hasMore={snippetsHasMore}
+          allTags={allTags}
           collectionId={current.id}
           onCollectionSnippetsChange={handleCollectionSnippetsChange}
         />

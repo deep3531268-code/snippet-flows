@@ -4,13 +4,78 @@ import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
 import { recentService } from "@/features/recent/service"
+import { decodeCursor } from "@/features/shared/pagination/cursor"
+import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import type { Page } from "@/features/shared/pagination/types"
 import {
   createSnippetSchema,
   snippetIdSchema,
   updateSnippetSchema,
 } from "./schemas"
+import { toSnippetListItem } from "./serializer"
 import { snippetService } from "./service"
-import type { SnippetListItem } from "./types"
+import type { SnippetFilterOptions } from "./repository"
+import type { SnippetListItem, SnippetSort } from "./types"
+
+const SNIPPET_SORTS: SnippetSort[] = [
+  "updated",
+  "created",
+  "oldest",
+  "az",
+  "za",
+  "language",
+]
+
+export type SnippetPageArgs = {
+  cursor: string | null
+  query?: string
+  language?: string
+  tag?: string
+  favoritesOnly?: boolean
+  visibility?: "all" | "public" | "private"
+  sort?: SnippetSort
+  collectionId?: string
+  tagId?: string
+}
+
+export async function loadMoreSnippets(
+  args: SnippetPageArgs,
+): Promise<Page<SnippetListItem>> {
+  const userId = await requireUserId()
+  const cursor = decodeCursor(args.cursor)
+  const options: SnippetFilterOptions = {
+    query: args.query
+      ? args.query.trim().slice(0, PAGINATION_CONFIG.maxQueryLength)
+      : undefined,
+    language:
+      args.language && args.language !== "all" ? args.language : undefined,
+    tag: args.tag && args.tag !== "all" ? args.tag : undefined,
+    favoritesOnly: args.favoritesOnly,
+    visibility:
+      args.visibility && args.visibility !== "all" ? args.visibility : undefined,
+    sort: SNIPPET_SORTS.includes(args.sort ?? "updated")
+      ? args.sort
+      : undefined,
+  }
+
+  const page = args.collectionId
+    ? await snippetService.getCollectionSnippetsPage(
+        userId,
+        args.collectionId,
+        options,
+        cursor,
+      )
+    : args.tagId
+      ? await snippetService.getTagSnippetsPage(
+          userId,
+          args.tagId,
+          options,
+          cursor,
+        )
+      : await snippetService.listSnippetsPage(userId, "all", options, cursor)
+
+  return { ...page, items: page.items.map(toSnippetListItem) }
+}
 
 export type SnippetFormState = {
   error?: string

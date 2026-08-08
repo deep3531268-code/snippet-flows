@@ -1,6 +1,13 @@
 import "server-only"
 
 import { prisma } from "@/lib/prisma"
+import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import { loadPage } from "@/features/shared/pagination/load-page"
+import type {
+  Cursor,
+  CursorField,
+  Page,
+} from "@/features/shared/pagination/types"
 import type { Prisma } from "@prisma/client"
 import type { TagSort } from "./types"
 
@@ -39,16 +46,83 @@ const SORT_ORDER: Record<TagSort, Prisma.TagOrderByWithRelationInput[]> = {
   count: [{ snippets: { _count: "desc" } }],
 }
 
+const PAGE_SORT_ORDER: Record<TagSort, Prisma.TagOrderByWithRelationInput[]> = {
+  updated: [{ createdAt: "desc" }, { id: "desc" }],
+  created: [{ createdAt: "desc" }, { id: "desc" }],
+  az: [{ name: "asc" }, { id: "asc" }],
+  za: [{ name: "desc" }, { id: "desc" }],
+  count: [{ snippets: { _count: "desc" } }, { id: "desc" }],
+}
+
+const PAGE_SORT_FIELDS: Record<TagSort, CursorField[]> = {
+  updated: [
+    { key: "createdAt", column: "createdAt", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  created: [
+    { key: "createdAt", column: "createdAt", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  az: [
+    { key: "name", column: "name", direction: "asc" },
+    { key: "id", column: "id", direction: "asc" },
+  ],
+  za: [
+    { key: "name", column: "name", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+  count: [
+    { key: "count", relationCount: "snippets", direction: "desc" },
+    { key: "id", column: "id", direction: "desc" },
+  ],
+}
+
+function buildWhere(
+  userId: string,
+  options: TagFilterOptions = {},
+): Prisma.TagWhereInput {
+  const conditions: Prisma.TagWhereInput[] = [{ userId }]
+  if (options.query) conditions.push(searchWhere(options.query))
+  return conditions.length === 1 ? conditions[0] : { AND: conditions }
+}
+
 export const tagRepository = {
   findMany(userId: string, options: TagFilterOptions = {}) {
-    const conditions: Prisma.TagWhereInput[] = [{ userId }]
-    if (options.query) conditions.push(searchWhere(options.query))
-
     return prisma.tag.findMany({
-      where:
-        conditions.length === 1 ? conditions[0] : { AND: conditions },
+      where: buildWhere(userId, options),
       include: tagInclude,
       orderBy: SORT_ORDER[options.sort ?? "updated"],
+    })
+  },
+
+  findPage(
+    userId: string,
+    options: TagFilterOptions = {},
+    cursor: Cursor | null = null,
+  ): Promise<Page<TagWithRelations>> {
+    const sort = options.sort ?? "updated"
+    return loadPage({
+      where: buildWhere(userId, options),
+      orderBy: PAGE_SORT_ORDER[sort],
+      cursorFields: PAGE_SORT_FIELDS[sort],
+      cursor,
+      pageSize: PAGINATION_CONFIG.tagPageSize,
+      findMany: (args) =>
+        prisma.tag.findMany({ ...args, include: tagInclude }),
+    })
+  },
+
+  count(userId: string, options: TagFilterOptions = {}) {
+    return prisma.tag.count({
+      where: buildWhere(userId, options),
+    })
+  },
+
+  findNames(userId: string) {
+    return prisma.tag.findMany({
+      where: { userId },
+      select: { name: true },
+      orderBy: { name: "asc" },
     })
   },
 

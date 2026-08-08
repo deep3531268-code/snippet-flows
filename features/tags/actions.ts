@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
 import { recentService } from "@/features/recent/service"
+import { decodeCursor } from "@/features/shared/pagination/cursor"
+import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import type { Page } from "@/features/shared/pagination/types"
 import {
   addSnippetsToTagSchema,
   bulkDeleteTagsSchema,
@@ -14,7 +17,35 @@ import {
   tagIdSchema,
   updateTagSchema,
 } from "./schemas"
+import { toTagListItem } from "./serializer"
 import { tagService } from "./service"
+import type { TagListItem, TagSort } from "./types"
+
+const TAG_SORTS: TagSort[] = ["updated", "created", "az", "za", "count"]
+
+export type TagPageArgs = {
+  cursor: string | null
+  query?: string
+  sort?: TagSort
+}
+
+export async function loadMoreTags(
+  args: TagPageArgs,
+): Promise<Page<TagListItem>> {
+  const userId = await requireUserId()
+  const cursor = decodeCursor(args.cursor)
+  const page = await tagService.listTagsPage(
+    userId,
+    {
+      query: args.query
+        ? args.query.trim().slice(0, PAGINATION_CONFIG.maxQueryLength)
+        : undefined,
+      sort: TAG_SORTS.includes(args.sort ?? "updated") ? args.sort : undefined,
+    },
+    cursor,
+  )
+  return { ...page, items: page.items.map(toTagListItem) }
+}
 
 export type TagFormState = {
   error?: string

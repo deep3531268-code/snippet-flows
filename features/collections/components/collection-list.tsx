@@ -6,23 +6,25 @@ import { useRouter } from "next/navigation"
 import { Folder, FolderPlus, Plus, Upload } from "lucide-react"
 import { toast } from "sonner"
 
-import { useDebounce, useLocalStorage } from "@/features/shared/hooks"
+import { useDebounce, useInfiniteList, useLocalStorage } from "@/features/shared/hooks"
 import { DASHBOARD_STORAGE } from "@/features/settings/config"
 import {
   DashboardBadge,
   DashboardButton,
   EmptyState,
 } from "@/features/dashboard/ui"
+import { InfiniteScrollFooter } from "@/features/shared/components"
 import { StaggerContainer, StaggerItem } from "@/features/shared/motion"
 import { CollectionCard } from "./collection-card"
 import { CollectionToolbar } from "./collection-toolbar"
 import { CollectionBulkToolbar } from "./collection-bulk-toolbar"
 import { CollectionDialog } from "./collection-dialog"
 import { CollectionDeleteDialog } from "./collection-delete-dialog"
+import { loadMoreCollections } from "../actions"
 import {
   COLLECTION_SORT_OPTIONS,
   DEFAULT_COLLECTION_FILTERS,
-  filterAndSortCollections,
+  hasActiveFilters,
   type CollectionListFilters,
   type CollectionListSort,
   type CollectionView,
@@ -60,19 +62,16 @@ function validateFilters(raw: string | null): CollectionListFilters {
 
 function CollectionList({
   collections,
+  nextCursor,
+  hasMore,
+  totalCount,
 }: {
   collections: CollectionListItem[]
+  nextCursor: string | null
+  hasMore: boolean
+  totalCount?: number
 }) {
   const router = useRouter()
-
-  const [items, setItems] = useState<CollectionListItem[]>(collections)
-  const [prevCollections, setPrevCollections] = useState<CollectionListItem[]>(
-    collections,
-  )
-  if (prevCollections !== collections) {
-    setPrevCollections(collections)
-    setItems(collections)
-  }
 
   const [view, setView] = useLocalStorage<CollectionView>(
     DASHBOARD_STORAGE.collectionView.key,
@@ -118,17 +117,39 @@ function CollectionList({
     setSearchInput(filters.query)
   }, [filters.query])
 
-  const visible = useMemo(
-    () => filterAndSortCollections(items, filters, sort),
-    [items, filters, sort],
+  const loadPage = useCallback(
+    (cursor: string | null) =>
+      loadMoreCollections({ cursor, query: filters.query, sort }),
+    [filters.query, sort],
   )
+
+  const resetKey = `${serializeFilters(filters)}|${sort}`
+  const reconcileProps = !hasActiveFilters(filters) && sort === "updated"
+
+  const {
+    items,
+    setItems,
+    hasMore: liveHasMore,
+    initialLoading,
+    loadingMore,
+    error,
+    retry,
+    sentinelRef,
+  } = useInfiniteList<CollectionListItem>({
+    initialItems: collections,
+    initialNextCursor: nextCursor,
+    initialHasMore: hasMore,
+    loadPage,
+    resetKey,
+    reconcileProps,
+  })
 
   const selectedItems = useMemo(
     () => items.filter((item) => selected.has(item.id)),
     [items, selected],
   )
   const allVisibleSelected =
-    visible.length > 0 && visible.every((item) => selected.has(item.id))
+    items.length > 0 && items.every((item) => selected.has(item.id))
 
   useEffect(() => {
     const ids = new Set(items.map((item) => item.id))
@@ -161,7 +182,7 @@ function CollectionList({
     if (allVisibleSelected) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(visible.map((item) => item.id)))
+      setSelected(new Set(items.map((item) => item.id)))
     }
   }
 
@@ -426,7 +447,8 @@ function CollectionList({
               Manage and organize your snippet collections.
             </p>
             <DashboardBadge variant="secondary">
-              {items.length} {items.length === 1 ? "collection" : "collections"}
+              {(totalCount ?? items.length)}{" "}
+              {(totalCount ?? items.length) === 1 ? "collection" : "collections"}
             </DashboardBadge>
           </div>
         </div>
@@ -445,7 +467,7 @@ function CollectionList({
         onViewChange={setView}
         search={searchInput}
         onSearchChange={setSearchInput}
-        selectable={visible.length > 0}
+        selectable={items.length > 0}
         allSelected={allVisibleSelected}
         onToggleSelectAll={toggleSelectAll}
       />
@@ -460,32 +482,34 @@ function CollectionList({
         />
       ) : null}
 
-      {items.length === 0 ? (
-        <EmptyState
-          icon={Folder}
-          title="No collections yet"
-          description="Organize snippets by creating collections."
-          className="min-h-[320px] flex-1"
-        >
-          <DashboardButton onClick={openCreate}>
-            <FolderPlus className="size-4" />
-            Create Collection
-          </DashboardButton>
-          <DashboardButton variant="secondary" onClick={handleImport}>
-            <Upload className="size-4" />
-            Import Collections
-          </DashboardButton>
-        </EmptyState>
-      ) : visible.length === 0 ? (
-        <EmptyState
-          icon={Folder}
-          title="No matching collections"
-          description="Try adjusting your search or filters."
-          className="min-h-[320px] flex-1"
-        />
+      {initialLoading && items.length === 0 ? null : items.length === 0 ? (
+        hasActiveFilters(filters) ? (
+          <EmptyState
+            icon={Folder}
+            title="No matching collections"
+            description="Try adjusting your search or filters."
+            className="min-h-[320px] flex-1"
+          />
+        ) : (
+          <EmptyState
+            icon={Folder}
+            title="No collections yet"
+            description="Organize snippets by creating collections."
+            className="min-h-[320px] flex-1"
+          >
+            <DashboardButton onClick={openCreate}>
+              <FolderPlus className="size-4" />
+              Create Collection
+            </DashboardButton>
+            <DashboardButton variant="secondary" onClick={handleImport}>
+              <Upload className="size-4" />
+              Import Collections
+            </DashboardButton>
+          </EmptyState>
+        )
       ) : view === "grid" ? (
         <StaggerContainer className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((collection) => (
+          {items.map((collection) => (
             <StaggerItem key={collection.id} className="h-full">
               <CollectionCard
                 collection={collection}
@@ -500,7 +524,7 @@ function CollectionList({
         </StaggerContainer>
       ) : (
         <StaggerContainer className="flex flex-col gap-2">
-          {visible.map((collection) => (
+          {items.map((collection) => (
             <StaggerItem key={collection.id}>
               <CollectionCard
                 collection={collection}
@@ -514,6 +538,17 @@ function CollectionList({
           ))}
         </StaggerContainer>
       )}
+
+      {items.length > 0 || initialLoading ? (
+        <InfiniteScrollFooter
+          sentinelRef={sentinelRef}
+          initialLoading={initialLoading}
+          loadingMore={loadingMore}
+          hasMore={liveHasMore}
+          error={error}
+          onRetry={retry}
+        />
+      ) : null}
 
       <CollectionDialog
         open={dialogOpen}
