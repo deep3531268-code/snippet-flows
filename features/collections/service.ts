@@ -51,11 +51,13 @@ export const collectionService = {
   },
 
   async deleteCollection(userId: string, id: string) {
-    await collectionRepository.delete(userId, id)
+    return collectionRepository.delete(userId, id)
   },
 
   async deleteCollections(userId: string, ids: string[]) {
+    const collections = await collectionRepository.findByIds(userId, ids)
     await collectionRepository.deleteMany(userId, ids)
+    return collections
   },
 
   async duplicateCollections(userId: string, ids: string[]) {

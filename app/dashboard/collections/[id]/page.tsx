@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { requireUser } from "@/features/auth/session"
+import { recentService } from "@/features/recent/service"
 import {
   CollectionDetails,
   CollectionDetailsPage,
@@ -69,6 +70,13 @@ async function CollectionDetailsFeed({
   if (!collection) {
     notFound()
   }
+
+  await recentService.record(user.id, {
+    targetType: "collection",
+    action: "viewed",
+    targetId: collection.id,
+    title: collection.name,
+  })
 
   const snippets = await collectionService.getCollectionSnippets(
     user.id,

@@ -7,6 +7,7 @@ import { Tag, Plus, Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { useDebounce, useLocalStorage } from "@/features/shared/hooks"
+import { DASHBOARD_STORAGE } from "@/features/settings/config"
 import { DashboardBadge, DashboardButton, EmptyState } from "@/features/dashboard/ui"
 import { StaggerContainer, StaggerItem } from "@/features/shared/motion"
 import { TagCard } from "./tag-card"
@@ -64,14 +65,14 @@ function TagList({ tags }: { tags: TagListItem[] }) {
   }
 
   const [view, setView] = useLocalStorage<TagView>(
-    "tags-view",
-    "grid",
+    DASHBOARD_STORAGE.tagView.key,
+    DASHBOARD_STORAGE.tagView.default,
     validateView,
     String,
   )
   const [sort, setSort] = useLocalStorage<TagListSort>(
-    "tags-sort",
-    "updated",
+    DASHBOARD_STORAGE.tagSort.key,
+    DASHBOARD_STORAGE.tagSort.default,
     validateSort,
     String,
   )

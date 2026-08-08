@@ -1,4 +1,5 @@
 import * as React from "react";
+import Link from "next/link";
 import { Activity, FilePlus2, FolderPlus, Tag } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -73,15 +74,29 @@ function RecentActivity({
                   <Icon aria-hidden className="size-4" />
                 </div>
                 <div className="grid min-w-0 flex-1 gap-0.5">
-                  <p
-                    className={cn(
-                      dashboardTypography.body,
-                      dashboardColors.body,
-                      "truncate font-medium",
-                    )}
-                  >
-                    {item.text}
-                  </p>
+                  {item.route ? (
+                    <Link
+                      href={item.route}
+                      className={cn(
+                        "truncate font-medium",
+                        dashboardTypography.body,
+                        dashboardColors.body,
+                        "hover:text-[#f3f6fb]",
+                      )}
+                    >
+                      {item.text}
+                    </Link>
+                  ) : (
+                    <p
+                      className={cn(
+                        dashboardTypography.body,
+                        dashboardColors.body,
+                        "truncate font-medium",
+                      )}
+                    >
+                      {item.text}
+                    </p>
+                  )}
                   <p
                     className={cn(
                       dashboardTypography.caption,

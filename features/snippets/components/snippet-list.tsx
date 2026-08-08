@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { useDebounce, useLocalStorage } from "@/features/shared/hooks"
+import { recordSnippetViewed } from "@/features/recent/actions"
 import {
   DashboardBadge,
   DashboardButton,
@@ -44,6 +45,7 @@ import {
   type SnippetView,
 } from "@/features/snippets/query"
 import type { SnippetListItem } from "@/features/snippets/types"
+import { DASHBOARD_STORAGE } from "@/features/settings/config"
 import { DeleteDialog } from "./delete-dialog"
 import {
   SnippetDialog,
@@ -122,14 +124,14 @@ function SnippetList({
   }
 
   const [view, setView] = useLocalStorage<SnippetView>(
-    "snippets-view",
-    "grid",
+    DASHBOARD_STORAGE.snippetView.key,
+    DASHBOARD_STORAGE.snippetView.default,
     validateView,
     String,
   )
   const [sort, setSort] = useLocalStorage<SnippetListSort>(
-    "snippets-sort",
-    "updated",
+    DASHBOARD_STORAGE.snippetSort.key,
+    DASHBOARD_STORAGE.snippetSort.default,
     validateSort,
     String,
   )
@@ -247,6 +249,7 @@ function SnippetList({
   const openEdit = useCallback((snippet: SnippetListItem) => {
     setEditing(snippet)
     setDialogOpen(true)
+    void recordSnippetViewed(snippet.id)
   }, [])
 
   const requestDelete = useCallback((snippet: SnippetListItem) => {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
+import { recentService } from "@/features/recent/service"
 import {
   createSnippetSchema,
   snippetIdSchema,
@@ -121,6 +122,12 @@ export async function createSnippet(
 
   try {
     const snippet = await snippetService.createSnippet(userId, parsed.data)
+    await recentService.record(userId, {
+      targetType: "snippet",
+      action: "created",
+      targetId: snippet.id,
+      title: snippet.title,
+    })
     revalidatePath("/snippets")
     return { snippetId: snippet.id }
   } catch (error) {
@@ -150,6 +157,12 @@ export async function updateSnippet(
 
   try {
     const snippet = await snippetService.updateSnippet(userId, parsed.data)
+    await recentService.record(userId, {
+      targetType: "snippet",
+      action: "updated",
+      targetId: snippet.id,
+      title: snippet.title,
+    })
     revalidatePath("/snippets")
     return { snippetId: snippet.id }
   } catch (error) {
@@ -166,6 +179,7 @@ export async function deleteSnippet(
 
   try {
     await snippetService.deleteSnippet(userId, id)
+    await recentService.recordSnippet(userId, id, "deleted")
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
@@ -213,7 +227,15 @@ export async function duplicateSnippet(
   if (!id) return { error: "Invalid snippet id" }
 
   try {
-    await snippetService.duplicateSnippet(userId, id)
+    const snippet = await snippetService.duplicateSnippet(userId, id)
+    if (snippet) {
+      await recentService.record(userId, {
+        targetType: "snippet",
+        action: "created",
+        targetId: snippet.id,
+        title: snippet.title,
+      })
+    }
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
@@ -229,7 +251,15 @@ export async function toggleSnippetFavorite(
   if (!id) return { error: "Invalid snippet id" }
 
   try {
-    await snippetService.toggleFavorite(userId, id)
+    const snippet = await snippetService.toggleFavorite(userId, id)
+    if (snippet?.isFavorite) {
+      await recentService.record(userId, {
+        targetType: "snippet",
+        action: "favorited",
+        targetId: snippet.id,
+        title: snippet.title,
+      })
+    }
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
@@ -245,7 +275,15 @@ export async function toggleSnippetArchive(
   if (!id) return { error: "Invalid snippet id" }
 
   try {
-    await snippetService.toggleArchive(userId, id)
+    const snippet = await snippetService.toggleArchive(userId, id)
+    if (snippet?.isArchived) {
+      await recentService.record(userId, {
+        targetType: "snippet",
+        action: "archived",
+        targetId: snippet.id,
+        title: snippet.title,
+      })
+    }
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
@@ -263,6 +301,9 @@ export async function bulkFavoriteSnippets(
 
   try {
     await snippetService.bulkSetFavorite(userId, ids, isFavorite)
+    if (isFavorite) {
+      await recentService.recordSnippets(userId, ids, "favorited")
+    }
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
@@ -279,6 +320,7 @@ export async function bulkArchiveSnippets(
 
   try {
     await snippetService.bulkSetArchived(userId, ids, true)
+    await recentService.recordSnippets(userId, ids, "archived")
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
@@ -295,6 +337,7 @@ export async function bulkDeleteSnippets(
 
   try {
     await snippetService.bulkDeleteSnippets(userId, ids)
+    await recentService.recordSnippets(userId, ids, "deleted")
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {

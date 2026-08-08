@@ -29,16 +29,22 @@ function languageLabel(language: string) {
 
 function RecentSnippets({
   snippets,
+  title = "Recent Snippets",
+  description = "Your latest updates",
+  empty,
   className,
 }: {
   snippets: DashboardRecentSnippet[];
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  empty?: React.ReactNode;
   className?: string;
 }) {
   return (
     <DashboardCard className={cn("flex flex-col gap-5", className)}>
       <SectionHeader
-        title="Recent Snippets"
-        description="Your latest updates"
+        title={title}
+        description={description}
         action={
           <DashboardButton asChild variant="secondary" size="sm">
             <Link href="/dashboard/snippets">View all</Link>
@@ -46,12 +52,14 @@ function RecentSnippets({
         }
       />
       {snippets.length === 0 ? (
-        <EmptyState
-          icon={FileCode2}
-          title="No snippets yet"
-          description="Create your first snippet to see it here."
-          className="min-h-[280px] flex-1 border-0 bg-transparent shadow-none"
-        />
+        empty ?? (
+          <EmptyState
+            icon={FileCode2}
+            title="No snippets yet"
+            description="Create your first snippet to see it here."
+            className="min-h-[280px] flex-1 border-0 bg-transparent shadow-none"
+          />
+        )
       ) : (
         <ul className="flex flex-col gap-2">
           {snippets.map((snippet) => (

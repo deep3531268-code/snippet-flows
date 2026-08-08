@@ -30,9 +30,13 @@ function languageLabel(language: string) {
 
 function ContinueWorking({
   snippet,
+  action,
+  timestamp,
   className,
 }: {
   snippet: DashboardRecentSnippet | null;
+  action: string | null;
+  timestamp: string | null;
   className?: string;
 }) {
   return (
@@ -74,7 +78,8 @@ function ContinueWorking({
                   {snippet.title}
                 </p>
                 <p className={cn(dashboardTypography.caption, dashboardColors.caption)}>
-                  Updated <RelativeTime date={snippet.updatedAt} />
+                  {action ?? "Updated"}{" "}
+                  <RelativeTime date={timestamp ?? snippet.updatedAt} />
                 </p>
               </div>
             </div>

@@ -1,21 +1,21 @@
 import { snippetService } from "@/features/snippets/service"
+import {
+  actionLabel,
+  describeActivity,
+  recentService,
+  type RecentActivityItem,
+} from "@/features/recent/service"
 import { dashboardRepository } from "./repository"
 import type {
   DashboardActivityEvent,
   DashboardCollectionSummary,
+  DashboardContinueWorking,
   DashboardData,
   DashboardRecentSnippet,
 } from "./types"
 
-const RECENT_SNIPPETS_LIMIT = 5
 const RECENT_COLLECTIONS_LIMIT = 4
-const RECENT_TAGS_LIMIT = 4
 const ACTIVITY_LIMIT = 5
-const CREATED_WINDOW_MS = 1000
-
-function isNewlyCreated(createdAt: Date, updatedAt: Date) {
-  return updatedAt.getTime() - createdAt.getTime() < CREATED_WINDOW_MS
-}
 
 function mapSnippet(snippet: {
   id: string
@@ -64,45 +64,18 @@ function mapCollection(collection: {
   }
 }
 
-function buildActivity(
-  snippets: DashboardRecentSnippet[],
-  collections: DashboardCollectionSummary[],
-  tags: { id: string; name: string; createdAt: Date }[],
-): DashboardActivityEvent[] {
-  const events: DashboardActivityEvent[] = [
-    ...snippets.map((snippet) => ({
-      id: `snippet:${snippet.id}`,
-      kind: "snippet" as const,
-      text: isNewlyCreated(
-        new Date(snippet.createdAt),
-        new Date(snippet.updatedAt),
-      )
-        ? `Created snippet '${snippet.title}'`
-        : `Updated snippet '${snippet.title}'`,
-      timestamp: snippet.updatedAt,
-    })),
-    ...collections.map((collection) => ({
-      id: `collection:${collection.id}`,
-      kind: "collection" as const,
-      text: isNewlyCreated(
-        new Date(collection.createdAt),
-        new Date(collection.updatedAt),
-      )
-        ? `Created collection '${collection.name}'`
-        : `Updated collection '${collection.name}'`,
-      timestamp: collection.updatedAt,
-    })),
-    ...tags.map((tag) => ({
-      id: `tag:${tag.id}`,
-      kind: "tag" as const,
-      text: `Created tag '${tag.name}'`,
-      timestamp: tag.createdAt.toISOString(),
-    })),
-  ]
+function mapActivity(item: RecentActivityItem): DashboardActivityEvent {
+  return {
+    id: item.id,
+    kind: item.targetType,
+    text: describeActivity(item),
+    timestamp: item.createdAt,
+    route: item.route,
+  }
+}
 
-  return events
-    .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
-    .slice(0, ACTIVITY_LIMIT)
+function emptyContinueWorking(): DashboardContinueWorking {
+  return { snippet: null, action: null, timestamp: null, route: null }
 }
 
 export const dashboardService = {
@@ -110,16 +83,14 @@ export const dashboardService = {
     userId: string,
     userName: string | null,
   ): Promise<DashboardData> {
-    const [stats, snippets, collections, tags] = await Promise.all([
-      snippetService.getDashboardStats(userId),
-      dashboardRepository.recentSnippets(userId, RECENT_SNIPPETS_LIMIT),
-      dashboardRepository.latestCollections(userId, RECENT_COLLECTIONS_LIMIT),
-      dashboardRepository.recentTags(userId, RECENT_TAGS_LIMIT),
-    ])
-
-    const recentSnippets = snippets.map(mapSnippet)
-    const recentCollections = collections.map(mapCollection)
-    const activity = buildActivity(recentSnippets, recentCollections, tags)
+    const [stats, recentSnippets, recentCollections, activity, continueWorking] =
+      await Promise.all([
+        snippetService.getDashboardStats(userId),
+        recentService.getRecentSnippets(userId),
+        dashboardRepository.latestCollections(userId, RECENT_COLLECTIONS_LIMIT),
+        recentService.getRecentActivity(userId, ACTIVITY_LIMIT),
+        recentService.getContinueWorkingSnippet(userId),
+      ])
 
     return {
       userName,
@@ -129,9 +100,29 @@ export const dashboardService = {
         collections: stats.collections,
         tags: stats.tags,
       },
-      recentSnippets,
-      recentCollections,
-      activity,
+      recentSnippets: recentSnippets.map((item) => mapSnippet(item.snippet)),
+      recentCollections: recentCollections.map(mapCollection),
+      activity: activity.map(mapActivity),
+      continueWorking: continueWorking
+        ? {
+            snippet: mapSnippet(continueWorking.snippet),
+            action: actionLabel(continueWorking.action),
+            timestamp: continueWorking.timestamp,
+            route: continueWorking.route,
+          }
+        : emptyContinueWorking(),
+    }
+  },
+
+  async getRecentPageData(userId: string) {
+    const [viewed, edited] = await Promise.all([
+      recentService.getRecentlyViewedSnippets(userId),
+      recentService.getRecentlyEditedSnippets(userId),
+    ])
+
+    return {
+      viewed: viewed.map((item) => mapSnippet(item.snippet)),
+      edited: edited.map((item) => mapSnippet(item.snippet)),
     }
   },
 }

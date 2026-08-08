@@ -27,6 +27,14 @@ export type DashboardActivityEvent = {
   kind: DashboardActivityKind
   text: string
   timestamp: string
+  route: string | null
+}
+
+export type DashboardContinueWorking = {
+  snippet: DashboardRecentSnippet | null
+  action: string | null
+  timestamp: string | null
+  route: string | null
 }
 
 export type DashboardStats = {
@@ -42,4 +50,5 @@ export type DashboardData = {
   recentSnippets: DashboardRecentSnippet[]
   recentCollections: DashboardCollectionSummary[]
   activity: DashboardActivityEvent[]
+  continueWorking: DashboardContinueWorking
 }

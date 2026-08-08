@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
+import { recentService } from "@/features/recent/service"
 import {
   addSnippetsToTagSchema,
   bulkDeleteTagsSchema,
@@ -78,6 +79,12 @@ export async function createTag(
 
   try {
     const tag = await tagService.createTag(userId, parsed.data)
+    await recentService.record(userId, {
+      targetType: "tag",
+      action: "created",
+      targetId: tag.id,
+      title: tag.name,
+    })
     revalidatePath("/dashboard/tags")
     return { tagId: tag.id }
   } catch (error) {
@@ -105,6 +112,12 @@ export async function updateTag(
 
   try {
     const tag = await tagService.updateTag(userId, parsed.data)
+    await recentService.record(userId, {
+      targetType: "tag",
+      action: "updated",
+      targetId: tag.id,
+      title: tag.name,
+    })
     revalidatePath("/dashboard/tags")
     return { tagId: tag.id }
   } catch (error) {

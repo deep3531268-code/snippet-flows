@@ -139,6 +139,13 @@ export const snippetRepository = {
     })
   },
 
+  findManyByIds(userId: string, ids: string[]) {
+    return prisma.snippet.findMany({
+      where: { id: { in: ids }, userId },
+      include: snippetInclude,
+    })
+  },
+
   findPublicBySlug(slug: string) {
     return prisma.snippet.findFirst({
       where: { slug, isPublic: true, deletedAt: null },

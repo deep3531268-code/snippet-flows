@@ -7,6 +7,7 @@ import { Folder, FolderPlus, Plus, Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { useDebounce, useLocalStorage } from "@/features/shared/hooks"
+import { DASHBOARD_STORAGE } from "@/features/settings/config"
 import {
   DashboardBadge,
   DashboardButton,
@@ -74,14 +75,14 @@ function CollectionList({
   }
 
   const [view, setView] = useLocalStorage<CollectionView>(
-    "collections-view",
-    "grid",
+    DASHBOARD_STORAGE.collectionView.key,
+    DASHBOARD_STORAGE.collectionView.default,
     validateView,
     String,
   )
   const [sort, setSort] = useLocalStorage<CollectionListSort>(
-    "collections-sort",
-    "updated",
+    DASHBOARD_STORAGE.collectionSort.key,
+    DASHBOARD_STORAGE.collectionSort.default,
     validateSort,
     String,
   )

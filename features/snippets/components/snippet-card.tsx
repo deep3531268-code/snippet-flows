@@ -33,6 +33,7 @@ import { LanguageIcon, languageLabel } from "./language-icon"
 import { timeAgo } from "./utils"
 import type { SnippetListItem } from "@/features/snippets/types"
 import { cn } from "@/lib/utils"
+import { recordSnippetCopied } from "@/features/recent/actions"
 
 function CardActions({
   snippet,
@@ -59,6 +60,7 @@ function CardActions({
 
   const handleCopy = () => {
     void copy(snippet.content)
+    void recordSnippetCopied(snippet.id)
     toast.success("Copied to clipboard")
   }
 

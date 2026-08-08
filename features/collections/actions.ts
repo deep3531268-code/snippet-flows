@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
+import { recentService } from "@/features/recent/service"
 import {
   addSnippetsToCollectionSchema,
   bulkDeleteCollectionsSchema,
@@ -92,6 +93,12 @@ export async function createCollection(
       userId,
       parsed.data,
     )
+    await recentService.record(userId, {
+      targetType: "collection",
+      action: "created",
+      targetId: collection.id,
+      title: collection.name,
+    })
     revalidatePath("/collections")
     return { collectionId: collection.id }
   } catch (error) {
@@ -120,6 +127,12 @@ export async function updateCollection(
       userId,
       parsed.data,
     )
+    await recentService.record(userId, {
+      targetType: "collection",
+      action: "updated",
+      targetId: collection.id,
+      title: collection.name,
+    })
     revalidatePath("/collections")
     return { collectionId: collection.id }
   } catch (error) {
@@ -135,7 +148,15 @@ export async function deleteCollection(
   if (!id) return { error: "Invalid collection id" }
 
   try {
-    await collectionService.deleteCollection(userId, id)
+    const deleted = await collectionService.deleteCollection(userId, id)
+    if (deleted) {
+      await recentService.record(userId, {
+        targetType: "collection",
+        action: "deleted",
+        targetId: deleted.id,
+        title: deleted.name,
+      })
+    }
     revalidatePath("/collections")
     return { ok: true }
   } catch (error) {
@@ -151,7 +172,15 @@ export async function duplicateCollection(
   if (!id) return { error: "Invalid collection id" }
 
   try {
-    await collectionService.duplicateCollection(userId, id)
+    const collection = await collectionService.duplicateCollection(userId, id)
+    if (collection) {
+      await recentService.record(userId, {
+        targetType: "collection",
+        action: "created",
+        targetId: collection.id,
+        title: collection.name,
+      })
+    }
     revalidatePath("/collections")
     return { ok: true }
   } catch (error) {
@@ -243,7 +272,19 @@ export async function bulkDeleteCollections(
   if (!parsed.success) return { error: "No valid collections selected" }
 
   try {
-    await collectionService.deleteCollections(userId, parsed.data.ids)
+    const deleted = await collectionService.deleteCollections(
+      userId,
+      parsed.data.ids,
+    )
+    await recentService.recordMany(
+      userId,
+      deleted.map((collection) => ({
+        targetType: "collection" as const,
+        action: "deleted" as const,
+        targetId: collection.id,
+        title: collection.name,
+      })),
+    )
     revalidatePath("/dashboard/collections")
     return { ok: true }
   } catch (error) {
@@ -262,7 +303,19 @@ export async function bulkDuplicateCollections(
   if (!parsed.success) return { error: "No valid collections selected" }
 
   try {
-    await collectionService.duplicateCollections(userId, parsed.data.ids)
+    const collections = await collectionService.duplicateCollections(
+      userId,
+      parsed.data.ids,
+    )
+    await recentService.recordMany(
+      userId,
+      collections.map((collection) => ({
+        targetType: "collection" as const,
+        action: "created" as const,
+        targetId: collection.id,
+        title: collection.name,
+      })),
+    )
     revalidatePath("/dashboard/collections")
     return { ok: true }
   } catch (error) {

@@ -19,8 +19,24 @@ model User {
   snippets    Snippet[]
   collections Collection[]
   tags        Tag[]
+  activities  Activity[]
+  settings    UserSettings?
 
   @@map("users")
+}
+
+// Account-level preferences, stored as a validated JSON payload. One row per
+// user (1:1 with users); the row is lazy-created on first write so existing
+// users need no backfill.
+model UserSettings {
+  userId    String   @id @map("user_id") @db.Uuid
+  data      Json     @default("{}") @map("data")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
 }
 
 model Snippet {
@@ -103,4 +119,21 @@ model SnippetsOnTags {
   @@id([snippetId, tagId])
   @@index([tagId])
   @@map("snippets_on_tags")
+}
+
+model Activity {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  targetType String   @map("target_type") @db.VarChar(20)
+  action     String   @map("action") @db.VarChar(20)
+  targetId   String   @map("target_id") @db.Uuid
+  title      String   @map("title") @db.VarChar(200)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, action, createdAt(sort: Desc)])
+  @@index([userId, targetType, targetId, createdAt(sort: Desc)])
+  @@map("activities")
 }

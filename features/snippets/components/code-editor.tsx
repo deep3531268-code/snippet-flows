@@ -9,6 +9,7 @@ import { Check, Copy } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useSettings } from "@/features/settings/hooks"
 import {
   SNIPPET_LANGUAGES,
   SNIPPET_LANGUAGE_LABELS,
@@ -210,8 +211,11 @@ export function CodeEditor({
   className?: string
 }) {
   const { html, ready } = useHighlightedCode(value, language)
+  const { settings } = useSettings()
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [wrapEnabled, setWrapEnabled] = useState(false)
+  const [wrapEnabled, setWrapEnabled] = useState(
+    settings?.editor.wordWrap ?? false,
+  )
 
   const rootRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)

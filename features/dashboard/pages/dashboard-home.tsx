@@ -13,7 +13,6 @@ import { HelpfulResources } from "./helpful-resources";
 
 async function DashboardHome() {
   const data = await getDashboardData();
-  const featuredSnippet = data.recentSnippets[0] ?? null;
 
   return (
     <SectionContainer className="gap-8">
@@ -33,7 +32,11 @@ async function DashboardHome() {
       <DashboardStats stats={data.stats} />
       <QuickActions />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <ContinueWorking snippet={featuredSnippet} />
+        <ContinueWorking
+          snippet={data.continueWorking.snippet}
+          action={data.continueWorking.action}
+          timestamp={data.continueWorking.timestamp}
+        />
         <RecentActivity activity={data.activity} />
       </div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">

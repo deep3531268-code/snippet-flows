@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { useTransition } from "react"
 import { useTheme } from "next-themes"
 import { toast } from "sonner"
@@ -8,8 +7,10 @@ import { motion } from "framer-motion"
 import { Loader2, Monitor, Moon, Sun } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { SETTING_KEYS, type ThemePreference } from "../config"
+import { useSettings } from "../hooks"
 
-const THEME_OPTIONS = [
+const THEME_OPTION_META = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon },
   { value: "system", label: "System", icon: Monitor },
@@ -116,18 +117,19 @@ function Preview({ resolvedTheme }: { resolvedTheme: string | undefined }) {
 }
 
 export function ThemeSettings() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { resolvedTheme } = useTheme()
+  const { settings, loaded, updateSetting } = useSettings()
   const [pending, start] = useTransition()
 
-  const select = (value: string) => {
-    if (value === theme) return
+  const active = settings?.appearance.theme ?? "system"
+
+  const select = (value: ThemePreference) => {
+    if (value === active) return
     start(async () => {
       try {
-        setTheme(value)
+        await updateSetting(SETTING_KEYS.theme, value)
         toast.success(
-          value === "system"
-            ? "Using system theme"
-            : `Theme set to ${value}`,
+          value === "system" ? "Using system theme" : `Theme set to ${value}`,
         )
       } catch {
         toast.error("Failed to update theme")
@@ -140,27 +142,30 @@ export function ThemeSettings() {
       <div
         role="radiogroup"
         aria-label="Theme"
-        className="flex w-fit items-center gap-0.5 rounded-lg border bg-card p-1"
+        className={cn(
+          "flex w-fit items-center gap-0.5 rounded-lg border bg-card p-1",
+          !loaded && "opacity-60",
+        )}
       >
-        {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
-          const active = theme === value
+        {THEME_OPTION_META.map(({ value, label, icon: Icon }) => {
+          const isActive = active === value
           return (
             <button
               key={value}
               type="button"
               role="radio"
-              aria-checked={active}
-              disabled={pending}
+              aria-checked={isActive}
+              disabled={pending || !loaded}
               onClick={() => select(value)}
               className={cn(
                 "relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                active
+                isActive
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground",
                 pending && "pointer-events-none opacity-70",
               )}
             >
-              {active && (
+              {isActive && (
                 <motion.span
                   layoutId="theme-settings-pill"
                   className="absolute inset-0 rounded-md bg-muted"
@@ -168,7 +173,7 @@ export function ThemeSettings() {
                 />
               )}
               <span className="relative inline-flex items-center gap-1.5">
-                {active && pending ? (
+                {isActive && pending ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <Icon className="size-3.5" />
@@ -183,7 +188,7 @@ export function ThemeSettings() {
       <Preview resolvedTheme={resolvedTheme} />
 
       <p className="text-xs text-muted-foreground">
-        Your preference is saved automatically and applied across all pages.
+        Your preference is saved to your account and applied across all pages.
       </p>
     </div>
   )
