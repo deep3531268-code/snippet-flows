@@ -67,7 +67,7 @@ async function TagDetailsFeed({
     notFound()
   }
 
-  const snippets = await tagService.getTagSnippets(user.id, tag.id)
+  const snippets = await tagService.getTagSnippets(user.id, tag.id, tag)
 
   return (
     <TagDetails

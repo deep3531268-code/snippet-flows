@@ -49,9 +49,8 @@ export const tagService = {
   },
 
   async deleteTags(userId: string, ids: string[]) {
-    for (const id of ids) {
-      await tagRepository.delete(userId, id)
-    }
+    if (ids.length === 0) return
+    await tagRepository.deleteMany(userId, ids)
   },
 
   async duplicateTag(userId: string, id: string) {
@@ -66,19 +65,14 @@ export const tagService = {
   },
 
   async duplicateTags(userId: string, ids: string[]) {
-    const created = []
-    for (const id of ids) {
-      const source = await tagRepository.findById(userId, id)
-      if (!source) {
-        continue
-      }
-      created.push(
-        await tagRepository.create(userId, {
+    const sources = await tagRepository.findByIds(userId, ids)
+    return Promise.all(
+      sources.map((source) =>
+        tagRepository.create(userId, {
           name: `${source.name} (copy)`,
         }),
-      )
-    }
-    return created
+      ),
+    )
   },
 
   async addSnippetsToTag(
@@ -111,9 +105,13 @@ export const tagService = {
     await tagRepository.detachSnippet(tagId, snippetId)
   },
 
-  async getTagSnippets(userId: string, tagId: string) {
-    const tag = await tagRepository.findById(userId, tagId)
-    if (!tag) {
+  async getTagSnippets(
+    userId: string,
+    tagId: string,
+    tag?: TagWithRelations,
+  ) {
+    const owned = tag ?? (await tagRepository.findById(userId, tagId))
+    if (!owned) {
       throw new TagNotFoundError()
     }
 

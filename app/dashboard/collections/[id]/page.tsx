@@ -81,6 +81,7 @@ async function CollectionDetailsFeed({
   const snippets = await collectionService.getCollectionSnippets(
     user.id,
     collection.id,
+    collection,
   )
 
   return (

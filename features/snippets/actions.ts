@@ -58,47 +58,25 @@ function message(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
-function toListItem(snippet: {
-  id: string
-  title: string
-  description: string | null
-  content: string
-  language: string
-  isPublic: boolean
-  slug: string | null
-  isFavorite: boolean
-  isArchived: boolean
-  deletedAt: Date | null
-  createdAt: Date
-  updatedAt: Date
-  tags: { tag: { id: string; name: string } }[]
-  collections: { collection: { id: string; name: string } }[]
-}): SnippetListItem {
-  return {
+export async function listSnippetOptions(): Promise<SnippetListItem[]> {
+  const userId = await requireUserId()
+  const snippets = await snippetService.getSnippetOptions(userId)
+  return snippets.map((snippet) => ({
     id: snippet.id,
     title: snippet.title,
     description: snippet.description,
-    content: snippet.content,
+    content: "",
     language: snippet.language,
-    isPublic: snippet.isPublic,
-    slug: snippet.slug,
-    isFavorite: snippet.isFavorite,
-    isArchived: snippet.isArchived,
-    deletedAt: snippet.deletedAt?.toISOString() ?? null,
-    createdAt: snippet.createdAt.toISOString(),
-    updatedAt: snippet.updatedAt.toISOString(),
-    tags: snippet.tags.map(({ tag }) => ({ id: tag.id, name: tag.name })),
-    collections: snippet.collections.map(({ collection }) => ({
-      id: collection.id,
-      name: collection.name,
-    })),
-  }
-}
-
-export async function listSnippetOptions(): Promise<SnippetListItem[]> {
-  const userId = await requireUserId()
-  const snippets = await snippetService.listSnippets(userId, "all")
-  return snippets.map(toListItem)
+    isPublic: false,
+    slug: null,
+    isFavorite: false,
+    isArchived: false,
+    deletedAt: null,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+    tags: [],
+    collections: [],
+  }))
 }
 
 export async function createSnippet(

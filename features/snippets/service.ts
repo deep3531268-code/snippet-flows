@@ -48,6 +48,10 @@ export const snippetService = {
     return snippetRepository.findMany(userId, filter, options)
   },
 
+  getSnippetOptions(userId: string) {
+    return snippetRepository.findOptions(userId)
+  },
+
   async getSnippet(userId: string, id: string) {
     return snippetRepository.findById(userId, id)
   },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useTransition } from "react"
+import { useSyncExternalStore, useTransition } from "react"
 import { useTheme } from "next-themes"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
@@ -116,10 +116,21 @@ function Preview({ resolvedTheme }: { resolvedTheme: string | undefined }) {
   )
 }
 
+const subscribe = () => () => {}
+
+function useMounted() {
+  return useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  )
+}
+
 export function ThemeSettings() {
   const { resolvedTheme } = useTheme()
   const { settings, loaded, updateSetting } = useSettings()
   const [pending, start] = useTransition()
+  const mounted = useMounted()
 
   const active = settings?.appearance.theme ?? "system"
 
@@ -185,7 +196,7 @@ export function ThemeSettings() {
         })}
       </div>
 
-      <Preview resolvedTheme={resolvedTheme} />
+      <Preview resolvedTheme={mounted ? resolvedTheme : undefined} />
 
       <p className="text-xs text-muted-foreground">
         Your preference is saved to your account and applied across all pages.

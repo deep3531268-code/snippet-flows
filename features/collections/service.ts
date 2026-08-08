@@ -131,9 +131,14 @@ export const collectionService = {
     await collectionRepository.detachSnippet(collectionId, snippetId)
   },
 
-  async getCollectionSnippets(userId: string, collectionId: string) {
-    const collection = await collectionRepository.findById(userId, collectionId)
-    if (!collection) {
+  async getCollectionSnippets(
+    userId: string,
+    collectionId: string,
+    collection?: CollectionWithRelations,
+  ) {
+    const owned =
+      collection ?? (await collectionRepository.findById(userId, collectionId))
+    if (!owned) {
       throw new CollectionNotFoundError()
     }
 

@@ -59,6 +59,12 @@ export const tagRepository = {
     })
   },
 
+  findByIds(userId: string, ids: string[]) {
+    return prisma.tag.findMany({
+      where: { id: { in: ids }, userId },
+    })
+  },
+
   create(userId: string, data: CreateData) {
     return prisma.tag.create({
       data: { ...data, userId },
@@ -75,6 +81,12 @@ export const tagRepository = {
   delete(userId: string, id: string) {
     return prisma.tag.delete({
       where: { id, userId },
+    })
+  },
+
+  deleteMany(userId: string, ids: string[]) {
+    return prisma.tag.deleteMany({
+      where: { id: { in: ids }, userId },
     })
   },
 

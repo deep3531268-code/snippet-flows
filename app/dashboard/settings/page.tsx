@@ -1,5 +1,6 @@
 import { requireUser } from "@/features/auth/session"
 import { AccountSettings } from "@/features/settings/components/account-settings"
+import { DashboardSettings } from "@/features/settings/components/dashboard-settings"
 import { EditorSettings } from "@/features/settings/components/editor-settings"
 import { ExportData } from "@/features/settings/components/export-data"
 import { SettingsSection } from "@/features/settings/components/settings-section"
@@ -36,6 +37,13 @@ export default async function SettingsPage() {
           description="Default behavior for the code editor."
         >
           <EditorSettings />
+        </SettingsSection>
+
+        <SettingsSection
+          title="Dashboard"
+          description="Default view and ordering for your lists."
+        >
+          <DashboardSettings />
         </SettingsSection>
 
         <SettingsSection

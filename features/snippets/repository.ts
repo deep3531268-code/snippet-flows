@@ -92,16 +92,16 @@ const SORT_ORDER: Record<
 async function resolveTags(userId: string, names: string[]) {
   const unique = [...new Set(names.map((name) => name.trim()).filter(Boolean))]
   if (unique.length === 0) return []
-  const ids: string[] = []
-  for (const name of unique) {
-    const tag = await prisma.tag.upsert({
-      where: { userId_name: { userId, name } },
-      update: {},
-      create: { userId, name },
-    })
-    ids.push(tag.id)
-  }
-  return ids
+  const tags = await Promise.all(
+    unique.map((name) =>
+      prisma.tag.upsert({
+        where: { userId_name: { userId, name } },
+        update: {},
+        create: { userId, name },
+      }),
+    ),
+  )
+  return tags.map((tag) => tag.id)
 }
 
 function connectTags(
@@ -287,6 +287,19 @@ export const snippetRepository = {
     return prisma.snippet.findMany({
       where: { id: { in: ids }, userId },
       select: { id: true },
+    })
+  },
+
+  findOptions(userId: string) {
+    return prisma.snippet.findMany({
+      where: { userId, deletedAt: null, isArchived: false },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        language: true,
+      },
+      orderBy: { updatedAt: "desc" },
     })
   },
 
