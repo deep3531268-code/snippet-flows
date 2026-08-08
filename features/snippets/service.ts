@@ -114,7 +114,10 @@ export const snippetService = {
   },
 
   async updateSnippet(userId: string, input: UpdateSnippetInput) {
-    const existing = await snippetRepository.findById(userId, input.id)
+    const existing = await snippetRepository.findScalarById(userId, input.id, {
+      id: true,
+      slug: true,
+    })
     if (!existing) {
       throw new SnippetNotFoundError()
     }
@@ -158,7 +161,15 @@ export const snippetService = {
   },
 
   async duplicateSnippet(userId: string, id: string) {
-    const source = await snippetRepository.findById(userId, id)
+    const source = await snippetRepository.findScalarById(userId, id, {
+      id: true,
+      title: true,
+      description: true,
+      content: true,
+      language: true,
+      isPublic: true,
+      slug: true,
+    })
     if (!source) {
       throw new SnippetNotFoundError()
     }
@@ -176,7 +187,10 @@ export const snippetService = {
   },
 
   async toggleFavorite(userId: string, id: string) {
-    const snippet = await snippetRepository.findById(userId, id)
+    const snippet = await snippetRepository.findScalarById(userId, id, {
+      id: true,
+      isFavorite: true,
+    })
     if (!snippet) {
       throw new SnippetNotFoundError()
     }
@@ -185,7 +199,10 @@ export const snippetService = {
   },
 
   async toggleArchive(userId: string, id: string) {
-    const snippet = await snippetRepository.findById(userId, id)
+    const snippet = await snippetRepository.findScalarById(userId, id, {
+      id: true,
+      isArchived: true,
+    })
     if (!snippet) {
       throw new SnippetNotFoundError()
     }
@@ -194,7 +211,11 @@ export const snippetService = {
   },
 
   async setVisibility(userId: string, id: string, isPublic: boolean) {
-    const snippet = await snippetRepository.findById(userId, id)
+    const snippet = await snippetRepository.findScalarById(userId, id, {
+      id: true,
+      slug: true,
+      title: true,
+    })
     if (!snippet) {
       throw new SnippetNotFoundError()
     }

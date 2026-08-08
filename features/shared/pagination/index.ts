@@ -6,6 +6,7 @@ export {
 export { buildCursorWhere } from "./where"
 export {
   loadPage,
+  emptyPage,
   InvalidCursorError,
 } from "./load-page"
 export type {

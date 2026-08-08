@@ -16,7 +16,10 @@ const snippetFields = {
     .max(500, "Description must be 500 characters or fewer")
     .transform((value) => (value === "" ? null : value))
     .nullable(),
-  content: z.string().min(1, "Code content is required"),
+  content: z
+    .string()
+    .min(1, "Code content is required")
+    .max(100_000, "Code content must be 100,000 characters or fewer"),
   language: z.enum(SNIPPET_LANGUAGES, { message: "Choose a language" }),
   isPublic: z.boolean(),
   tags: z

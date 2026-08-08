@@ -11,6 +11,10 @@ export class InvalidCursorError extends Error {
   }
 }
 
+export function emptyPage<T>(): Page<T> {
+  return { items: [], nextCursor: null, hasMore: false }
+}
+
 type LoadPageArgs<T, W, O> = {
   where: W
   orderBy: O

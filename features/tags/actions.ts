@@ -5,8 +5,13 @@ import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
 import { recentService } from "@/features/recent/service"
+import { getActionErrorMessage } from "@/features/shared/errors"
 import { decodeCursor } from "@/features/shared/pagination/cursor"
 import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import {
+  emptyPage,
+  InvalidCursorError,
+} from "@/features/shared/pagination/load-page"
 import type { Page } from "@/features/shared/pagination/types"
 import {
   addSnippetsToTagSchema,
@@ -34,17 +39,24 @@ export async function loadMoreTags(
 ): Promise<Page<TagListItem>> {
   const userId = await requireUserId()
   const cursor = decodeCursor(args.cursor)
-  const page = await tagService.listTagsPage(
-    userId,
-    {
-      query: args.query
-        ? args.query.trim().slice(0, PAGINATION_CONFIG.maxQueryLength)
-        : undefined,
-      sort: TAG_SORTS.includes(args.sort ?? "updated") ? args.sort : undefined,
-    },
-    cursor,
-  )
-  return { ...page, items: page.items.map(toTagListItem) }
+  try {
+    const page = await tagService.listTagsPage(
+      userId,
+      {
+        query: args.query
+          ? args.query.trim().slice(0, PAGINATION_CONFIG.maxQueryLength)
+          : undefined,
+        sort: TAG_SORTS.includes(args.sort ?? "updated")
+          ? args.sort
+          : undefined,
+      },
+      cursor,
+    )
+    return { ...page, items: page.items.map(toTagListItem) }
+  } catch (error) {
+    if (error instanceof InvalidCursorError) return emptyPage()
+    throw error
+  }
 }
 
 export type TagFormState = {
@@ -83,10 +95,6 @@ function parseTagIdList(raw: FormDataEntryValue | null) {
     .filter((id) => tagIdSchema.safeParse(id).success)
 }
 
-function message(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
-}
-
 function isNameTakenError(error: unknown) {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -122,7 +130,7 @@ export async function createTag(
     if (isNameTakenError(error)) {
       return { fieldErrors: { name: ["A tag with this name already exists"] } }
     }
-    return { error: message(error, "Failed to create tag") }
+    return { error: getActionErrorMessage(error, "Failed to create tag") }
   }
 }
 
@@ -155,7 +163,7 @@ export async function updateTag(
     if (isNameTakenError(error)) {
       return { fieldErrors: { name: ["A tag with this name already exists"] } }
     }
-    return { error: message(error, "Failed to update tag") }
+    return { error: getActionErrorMessage(error, "Failed to update tag") }
   }
 }
 
@@ -171,7 +179,7 @@ export async function deleteTag(
     revalidatePath("/dashboard/tags")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to delete tag") }
+    return { error: getActionErrorMessage(error, "Failed to delete tag") }
   }
 }
 
@@ -187,7 +195,7 @@ export async function duplicateTag(
     revalidatePath("/dashboard/tags")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to duplicate tag") }
+    return { error: getActionErrorMessage(error, "Failed to duplicate tag") }
   }
 }
 
@@ -212,7 +220,7 @@ export async function addSnippetsToTag(
     revalidatePath(`/dashboard/tags/${parsed.data.tagId}`)
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to add snippets") }
+    return { error: getActionErrorMessage(error, "Failed to add snippets") }
   }
 }
 
@@ -237,7 +245,7 @@ export async function removeSnippetFromTag(
     revalidatePath(`/dashboard/tags/${parsed.data.tagId}`)
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to remove snippet") }
+    return { error: getActionErrorMessage(error, "Failed to remove snippet") }
   }
 }
 
@@ -256,7 +264,7 @@ export async function bulkDeleteTags(
     revalidatePath("/dashboard/tags")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to delete tags") }
+    return { error: getActionErrorMessage(error, "Failed to delete tags") }
   }
 }
 
@@ -275,6 +283,6 @@ export async function bulkDuplicateTags(
     revalidatePath("/dashboard/tags")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to duplicate tags") }
+    return { error: getActionErrorMessage(error, "Failed to duplicate tags") }
   }
 }

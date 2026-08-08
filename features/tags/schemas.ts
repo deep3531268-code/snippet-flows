@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { OPERATION_LIMITS } from "@/features/shared/config"
+
 const tagIdSchema = z.string().uuid("Invalid tag id")
 
 const tagFields = {
@@ -26,18 +28,18 @@ export const duplicateTagSchema = z.object({
 })
 
 export const bulkDeleteTagsSchema = z.object({
-  ids: z.array(tagIdSchema).min(1, "No tags selected"),
+  ids: z.array(tagIdSchema).min(1, "No tags selected").max(OPERATION_LIMITS.maxBulkIds),
 })
 
 export const bulkDuplicateTagsSchema = z.object({
-  ids: z.array(tagIdSchema).min(1, "No tags selected"),
+  ids: z.array(tagIdSchema).min(1, "No tags selected").max(OPERATION_LIMITS.maxBulkIds),
 })
 
 const snippetIdSchema = z.string().uuid("Invalid snippet id")
 
 export const addSnippetsToTagSchema = z.object({
   tagId: tagIdSchema,
-  snippetIds: z.array(snippetIdSchema),
+  snippetIds: z.array(snippetIdSchema).max(OPERATION_LIMITS.maxBulkIds),
 })
 
 export const removeSnippetFromTagSchema = z.object({

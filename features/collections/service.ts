@@ -105,7 +105,9 @@ export const collectionService = {
     snippetId: string,
     collectionIds: string[],
   ) {
-    const snippet = await snippetRepository.findById(userId, snippetId)
+    const snippet = await snippetRepository.findScalarById(userId, snippetId, {
+      id: true,
+    })
     if (!snippet) {
       throw new SnippetNotFoundError()
     }

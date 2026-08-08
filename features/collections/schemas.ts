@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { OPERATION_LIMITS } from "@/features/shared/config"
+
 const collectionIdSchema = z.string().uuid("Invalid collection id")
 
 const snippetIdSchema = z.string().uuid("Invalid snippet id")
@@ -35,12 +37,12 @@ export const duplicateCollectionSchema = z.object({
 
 export const setSnippetCollectionsSchema = z.object({
   snippetId: snippetIdSchema,
-  collectionIds: z.array(collectionIdSchema),
+  collectionIds: z.array(collectionIdSchema).max(OPERATION_LIMITS.maxBulkIds),
 })
 
 export const addSnippetsToCollectionSchema = z.object({
   collectionId: collectionIdSchema,
-  snippetIds: z.array(snippetIdSchema),
+  snippetIds: z.array(snippetIdSchema).max(OPERATION_LIMITS.maxBulkIds),
 })
 
 export const removeSnippetFromCollectionSchema = z.object({
@@ -49,11 +51,17 @@ export const removeSnippetFromCollectionSchema = z.object({
 })
 
 export const bulkDeleteCollectionsSchema = z.object({
-  ids: z.array(collectionIdSchema).min(1, "Select at least one collection"),
+  ids: z
+    .array(collectionIdSchema)
+    .min(1, "Select at least one collection")
+    .max(OPERATION_LIMITS.maxBulkIds),
 })
 
 export const bulkDuplicateCollectionsSchema = z.object({
-  ids: z.array(collectionIdSchema).min(1, "Select at least one collection"),
+  ids: z
+    .array(collectionIdSchema)
+    .min(1, "Select at least one collection")
+    .max(OPERATION_LIMITS.maxBulkIds),
 })
 
 export type CreateCollectionInput = z.infer<typeof createCollectionSchema>

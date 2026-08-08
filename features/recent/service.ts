@@ -112,22 +112,29 @@ export const recentService = {
     if (!isValidActivityAction(input.targetType, input.action)) {
       throw new Error("Invalid activity action")
     }
-    return recentRepository.create(userId, input)
+    return recentRepository.create(userId, input).catch(() => undefined)
   },
 
   async recordMany(userId: string, entries: RecordActivityInput[]) {
-    const valid = entries.filter((entry) =>
-      isValidActivityAction(entry.targetType, entry.action),
-    )
-    if (valid.length === 0) return
+    try {
+      const valid = entries.filter((entry) =>
+        isValidActivityAction(entry.targetType, entry.action),
+      )
+      if (valid.length === 0) return
 
-    await recentRepository.createMany(userId, valid)
+      await recentRepository.createMany(userId, valid)
 
-    if (
-      (await recentRepository.count(userId)) >
-      RECENT_ACTIVITY.limits.maxActivityPerUser
-    ) {
-      await recentRepository.trim(userId, RECENT_ACTIVITY.limits.maxActivityPerUser)
+      if (
+        (await recentRepository.count(userId)) >
+        RECENT_ACTIVITY.limits.maxActivityPerUser
+      ) {
+        await recentRepository.trim(
+          userId,
+          RECENT_ACTIVITY.limits.maxActivityPerUser,
+        )
+      }
+    } catch {
+      // Recording activity is best-effort and must never fail the caller.
     }
   },
 
@@ -136,14 +143,21 @@ export const recentService = {
     id: string,
     action: "viewed" | "created" | "updated" | "deleted" | "copied" | "favorited" | "archived",
   ) {
-    const snippet = await snippetRepository.findById(userId, id)
-    if (!snippet) return
-    await this.record(userId, {
-      targetType: "snippet",
-      action,
-      targetId: snippet.id,
-      title: snippet.title,
-    })
+    try {
+      const snippet = await snippetRepository.findScalarById(userId, id, {
+        id: true,
+        title: true,
+      })
+      if (!snippet) return
+      await this.record(userId, {
+        targetType: "snippet",
+        action,
+        targetId: snippet.id,
+        title: snippet.title,
+      })
+    } catch {
+      // Recording activity is best-effort and must never fail the caller.
+    }
   },
 
   async recordSnippets(
@@ -151,17 +165,21 @@ export const recentService = {
     ids: string[],
     action: "viewed" | "created" | "updated" | "deleted" | "copied" | "favorited" | "archived",
   ) {
-    if (ids.length === 0) return
-    const snippets = await snippetRepository.findManyByIds(userId, ids)
-    await this.recordMany(
-      userId,
-      snippets.map((snippet) => ({
-        targetType: "snippet" as const,
-        action,
-        targetId: snippet.id,
-        title: snippet.title,
-      })),
-    )
+    try {
+      if (ids.length === 0) return
+      const snippets = await snippetRepository.findTitlesByIds(userId, ids)
+      await this.recordMany(
+        userId,
+        snippets.map((snippet) => ({
+          targetType: "snippet" as const,
+          action,
+          targetId: snippet.id,
+          title: snippet.title,
+        })),
+      )
+    } catch {
+      // Recording activity is best-effort and must never fail the caller.
+    }
   },
 
   async recordCollection(
@@ -169,14 +187,18 @@ export const recentService = {
     id: string,
     action: "viewed" | "created" | "updated" | "deleted",
   ) {
-    const collection = await collectionRepository.findById(userId, id)
-    if (!collection) return
-    await this.record(userId, {
-      targetType: "collection",
-      action,
-      targetId: collection.id,
-      title: collection.name,
-    })
+    try {
+      const collection = await collectionRepository.findById(userId, id)
+      if (!collection) return
+      await this.record(userId, {
+        targetType: "collection",
+        action,
+        targetId: collection.id,
+        title: collection.name,
+      })
+    } catch {
+      // Recording activity is best-effort and must never fail the caller.
+    }
   },
 
   async recordCollections(
@@ -184,17 +206,21 @@ export const recentService = {
     ids: string[],
     action: "viewed" | "created" | "updated" | "deleted",
   ) {
-    if (ids.length === 0) return
-    const collections = await collectionRepository.findByIds(userId, ids)
-    await this.recordMany(
-      userId,
-      collections.map((collection) => ({
-        targetType: "collection" as const,
-        action,
-        targetId: collection.id,
-        title: collection.name,
-      })),
-    )
+    try {
+      if (ids.length === 0) return
+      const collections = await collectionRepository.findByIds(userId, ids)
+      await this.recordMany(
+        userId,
+        collections.map((collection) => ({
+          targetType: "collection" as const,
+          action,
+          targetId: collection.id,
+          title: collection.name,
+        })),
+      )
+    } catch {
+      // Recording activity is best-effort and must never fail the caller.
+    }
   },
 
   async getRecentActivity(

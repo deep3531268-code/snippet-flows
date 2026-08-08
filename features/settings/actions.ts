@@ -1,6 +1,7 @@
 "use server"
 
 import { getCurrentUser } from "@/features/auth/session"
+import { getActionErrorMessage } from "@/features/shared/errors"
 import { isDatabaseSetting, type SettingKey } from "./config"
 import { settingsService } from "./service"
 import type { SettingValue, Settings } from "./types"
@@ -10,10 +11,6 @@ export type SettingsActionResult = {
   ok?: boolean
   error?: string
   settings?: Settings
-}
-
-function message(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
 }
 
 // The settings provider mounts on every page (including public ones such as
@@ -29,7 +26,7 @@ export async function getSettingsAction(): Promise<SettingsActionResult> {
     const settings = await settingsService.getSettings(user.id)
     return { ok: true, settings }
   } catch (error) {
-    return { error: message(error, "Failed to load settings") }
+    return { error: getActionErrorMessage(error, "Failed to load settings") }
   }
 }
 
@@ -51,7 +48,7 @@ export async function updateSettingAction(
     )
     return { ok: true, settings }
   } catch (error) {
-    return { error: message(error, "Failed to update setting") }
+    return { error: getActionErrorMessage(error, "Failed to update setting") }
   }
 }
 
@@ -71,7 +68,7 @@ export async function resetSettingAction(
     )
     return { ok: true, settings }
   } catch (error) {
-    return { error: message(error, "Failed to reset setting") }
+    return { error: getActionErrorMessage(error, "Failed to reset setting") }
   }
 }
 
@@ -82,6 +79,6 @@ export async function resetSettingsAction(): Promise<SettingsActionResult> {
     const settings = await settingsService.resetSettings(user.id)
     return { ok: true, settings }
   } catch (error) {
-    return { error: message(error, "Failed to reset settings") }
+    return { error: getActionErrorMessage(error, "Failed to reset settings") }
   }
 }

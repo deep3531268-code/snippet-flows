@@ -158,18 +158,30 @@ function buildWhere(
   return conditions.length === 1 ? conditions[0] : { AND: conditions }
 }
 
+// Resolves tag names to ids in a bounded number of queries (find existing,
+// create missing, re-select) instead of one upsert round-trip per name.
 async function resolveTags(userId: string, names: string[]) {
   const unique = [...new Set(names.map((name) => name.trim()).filter(Boolean))]
   if (unique.length === 0) return []
-  const tags = await Promise.all(
-    unique.map((name) =>
-      prisma.tag.upsert({
-        where: { userId_name: { userId, name } },
-        update: {},
-        create: { userId, name },
-      }),
-    ),
-  )
+
+  const existing = await prisma.tag.findMany({
+    where: { userId, name: { in: unique } },
+    select: { name: true },
+  })
+  const existingNames = new Set(existing.map((tag) => tag.name))
+  const missing = unique.filter((name) => !existingNames.has(name))
+
+  if (missing.length > 0) {
+    await prisma.tag.createMany({
+      data: missing.map((name) => ({ userId, name })),
+      skipDuplicates: true,
+    })
+  }
+
+  const tags = await prisma.tag.findMany({
+    where: { userId, name: { in: unique } },
+    select: { id: true },
+  })
   return tags.map((tag) => tag.id)
 }
 
@@ -254,10 +266,27 @@ export const snippetRepository = {
     })
   },
 
+  // Scalar-only lookup for write paths that need existence or a few fields but
+  // not the tag/collection relations (avoids joining all relations per write).
+  findScalarById<T extends Prisma.SnippetSelect>(
+    userId: string,
+    id: string,
+    select: T,
+  ): Promise<Prisma.SnippetGetPayload<{ select: T }> | null> {
+    return prisma.snippet.findFirst({ where: { id, userId }, select })
+  },
+
   findManyByIds(userId: string, ids: string[]) {
     return prisma.snippet.findMany({
       where: { id: { in: ids }, userId },
       include: snippetInclude,
+    })
+  },
+
+  findTitlesByIds(userId: string, ids: string[]) {
+    return prisma.snippet.findMany({
+      where: { id: { in: ids }, userId },
+      select: { id: true, title: true },
     })
   },
 

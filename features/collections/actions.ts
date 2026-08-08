@@ -4,8 +4,13 @@ import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
 import { recentService } from "@/features/recent/service"
+import { getActionErrorMessage } from "@/features/shared/errors"
 import { decodeCursor } from "@/features/shared/pagination/cursor"
 import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import {
+  emptyPage,
+  InvalidCursorError,
+} from "@/features/shared/pagination/load-page"
 import type { Page } from "@/features/shared/pagination/types"
 import {
   addSnippetsToCollectionSchema,
@@ -40,19 +45,24 @@ export async function loadMoreCollections(
 ): Promise<Page<CollectionListItem>> {
   const userId = await requireUserId()
   const cursor = decodeCursor(args.cursor)
-  const page = await collectionService.listCollectionsPage(
-    userId,
-    {
-      query: args.query
-        ? args.query.trim().slice(0, PAGINATION_CONFIG.maxQueryLength)
-        : undefined,
-      sort: COLLECTION_SORTS.includes(args.sort ?? "updated")
-        ? args.sort
-        : undefined,
-    },
-    cursor,
-  )
-  return { ...page, items: page.items.map(toCollectionListItem) }
+  try {
+    const page = await collectionService.listCollectionsPage(
+      userId,
+      {
+        query: args.query
+          ? args.query.trim().slice(0, PAGINATION_CONFIG.maxQueryLength)
+          : undefined,
+        sort: COLLECTION_SORTS.includes(args.sort ?? "updated")
+          ? args.sort
+          : undefined,
+      },
+      cursor,
+    )
+    return { ...page, items: page.items.map(toCollectionListItem) }
+  } catch (error) {
+    if (error instanceof InvalidCursorError) return emptyPage()
+    throw error
+  }
 }
 
 export type CollectionFormState = {
@@ -74,10 +84,6 @@ async function requireUserId() {
 function parseId(raw: FormDataEntryValue | null) {
   const parsed = collectionIdSchema.safeParse(String(raw ?? ""))
   return parsed.success ? parsed.data : null
-}
-
-function message(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
 }
 
 function parseCollectionIds(raw: FormDataEntryValue | null) {
@@ -141,7 +147,7 @@ export async function createCollection(
     revalidatePath("/collections")
     return { collectionId: collection.id }
   } catch (error) {
-    return { error: message(error, "Failed to create collection") }
+    return { error: getActionErrorMessage(error, "Failed to create collection") }
   }
 }
 
@@ -175,7 +181,7 @@ export async function updateCollection(
     revalidatePath("/collections")
     return { collectionId: collection.id }
   } catch (error) {
-    return { error: message(error, "Failed to update collection") }
+    return { error: getActionErrorMessage(error, "Failed to update collection") }
   }
 }
 
@@ -199,7 +205,7 @@ export async function deleteCollection(
     revalidatePath("/collections")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to delete collection") }
+    return { error: getActionErrorMessage(error, "Failed to delete collection") }
   }
 }
 
@@ -223,7 +229,7 @@ export async function duplicateCollection(
     revalidatePath("/collections")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to duplicate collection") }
+    return { error: getActionErrorMessage(error, "Failed to duplicate collection") }
   }
 }
 
@@ -248,7 +254,7 @@ export async function setSnippetCollections(
     revalidatePath("/dashboard/collections")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to update collections") }
+    return { error: getActionErrorMessage(error, "Failed to update collections") }
   }
 }
 
@@ -272,7 +278,7 @@ export async function addSnippetsToCollection(
     revalidatePath("/dashboard/collections")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to add snippets") }
+    return { error: getActionErrorMessage(error, "Failed to add snippets") }
   }
 }
 
@@ -296,7 +302,7 @@ export async function removeSnippetFromCollection(
     revalidatePath("/dashboard/collections")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to remove snippet") }
+    return { error: getActionErrorMessage(error, "Failed to remove snippet") }
   }
 }
 
@@ -327,7 +333,7 @@ export async function bulkDeleteCollections(
     revalidatePath("/dashboard/collections")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to delete collections") }
+    return { error: getActionErrorMessage(error, "Failed to delete collections") }
   }
 }
 
@@ -358,6 +364,6 @@ export async function bulkDuplicateCollections(
     revalidatePath("/dashboard/collections")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to duplicate collections") }
+    return { error: getActionErrorMessage(error, "Failed to duplicate collections") }
   }
 }

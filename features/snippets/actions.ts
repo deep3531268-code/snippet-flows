@@ -4,8 +4,14 @@ import { revalidatePath } from "next/cache"
 
 import { requireUser } from "@/features/auth/session"
 import { recentService } from "@/features/recent/service"
+import { OPERATION_LIMITS } from "@/features/shared/config"
+import { getActionErrorMessage } from "@/features/shared/errors"
 import { decodeCursor } from "@/features/shared/pagination/cursor"
 import { PAGINATION_CONFIG } from "@/features/shared/pagination/config"
+import {
+  emptyPage,
+  InvalidCursorError,
+} from "@/features/shared/pagination/load-page"
 import type { Page } from "@/features/shared/pagination/types"
 import {
   createSnippetSchema,
@@ -58,23 +64,28 @@ export async function loadMoreSnippets(
       : undefined,
   }
 
-  const page = args.collectionId
-    ? await snippetService.getCollectionSnippetsPage(
-        userId,
-        args.collectionId,
-        options,
-        cursor,
-      )
-    : args.tagId
-      ? await snippetService.getTagSnippetsPage(
+  try {
+    const page = args.collectionId
+      ? await snippetService.getCollectionSnippetsPage(
           userId,
-          args.tagId,
+          args.collectionId,
           options,
           cursor,
         )
-      : await snippetService.listSnippetsPage(userId, "all", options, cursor)
+      : args.tagId
+        ? await snippetService.getTagSnippetsPage(
+            userId,
+            args.tagId,
+            options,
+            cursor,
+          )
+        : await snippetService.listSnippetsPage(userId, "all", options, cursor)
 
-  return { ...page, items: page.items.map(toSnippetListItem) }
+    return { ...page, items: page.items.map(toSnippetListItem) }
+  } catch (error) {
+    if (error instanceof InvalidCursorError) return emptyPage()
+    throw error
+  }
 }
 
 export type SnippetFormState = {
@@ -117,10 +128,6 @@ function parseTags(raw: FormDataEntryValue | null) {
     .split(",")
     .map((name) => name.trim())
     .filter(Boolean)
-}
-
-function message(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
 }
 
 export async function listSnippetOptions(): Promise<SnippetListItem[]> {
@@ -174,7 +181,7 @@ export async function createSnippet(
     revalidatePath("/snippets")
     return { snippetId: snippet.id }
   } catch (error) {
-    return { error: message(error, "Failed to create snippet") }
+    return { error: getActionErrorMessage(error, "Failed to create snippet") }
   }
 }
 
@@ -209,7 +216,7 @@ export async function updateSnippet(
     revalidatePath("/snippets")
     return { snippetId: snippet.id }
   } catch (error) {
-    return { error: message(error, "Failed to update snippet") }
+    return { error: getActionErrorMessage(error, "Failed to update snippet") }
   }
 }
 
@@ -226,7 +233,7 @@ export async function deleteSnippet(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to delete snippet") }
+    return { error: getActionErrorMessage(error, "Failed to delete snippet") }
   }
 }
 
@@ -242,7 +249,7 @@ export async function restoreSnippet(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to restore snippet") }
+    return { error: getActionErrorMessage(error, "Failed to restore snippet") }
   }
 }
 
@@ -258,7 +265,7 @@ export async function deleteSnippetForever(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to delete snippet permanently") }
+    return { error: getActionErrorMessage(error, "Failed to delete snippet permanently") }
   }
 }
 
@@ -282,7 +289,7 @@ export async function duplicateSnippet(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to duplicate snippet") }
+    return { error: getActionErrorMessage(error, "Failed to duplicate snippet") }
   }
 }
 
@@ -306,7 +313,7 @@ export async function toggleSnippetFavorite(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to update snippet") }
+    return { error: getActionErrorMessage(error, "Failed to update snippet") }
   }
 }
 
@@ -330,7 +337,7 @@ export async function toggleSnippetArchive(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to update snippet") }
+    return { error: getActionErrorMessage(error, "Failed to update snippet") }
   }
 }
 
@@ -340,6 +347,9 @@ export async function bulkFavoriteSnippets(
   const userId = await requireUserId()
   const ids = parseIds(formData.get("ids"))
   if (ids.length === 0) return { error: "No valid snippets selected" }
+  if (ids.length > OPERATION_LIMITS.maxBulkIds) {
+    return { error: "Too many snippets selected" }
+  }
   const isFavorite = formData.get("favorite") === "true"
 
   try {
@@ -350,7 +360,7 @@ export async function bulkFavoriteSnippets(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to update snippets") }
+    return { error: getActionErrorMessage(error, "Failed to update snippets") }
   }
 }
 
@@ -360,6 +370,9 @@ export async function bulkArchiveSnippets(
   const userId = await requireUserId()
   const ids = parseIds(formData.get("ids"))
   if (ids.length === 0) return { error: "No valid snippets selected" }
+  if (ids.length > OPERATION_LIMITS.maxBulkIds) {
+    return { error: "Too many snippets selected" }
+  }
 
   try {
     await snippetService.bulkSetArchived(userId, ids, true)
@@ -367,7 +380,7 @@ export async function bulkArchiveSnippets(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to archive snippets") }
+    return { error: getActionErrorMessage(error, "Failed to archive snippets") }
   }
 }
 
@@ -377,6 +390,9 @@ export async function bulkDeleteSnippets(
   const userId = await requireUserId()
   const ids = parseIds(formData.get("ids"))
   if (ids.length === 0) return { error: "No valid snippets selected" }
+  if (ids.length > OPERATION_LIMITS.maxBulkIds) {
+    return { error: "Too many snippets selected" }
+  }
 
   try {
     await snippetService.bulkDeleteSnippets(userId, ids)
@@ -384,7 +400,7 @@ export async function bulkDeleteSnippets(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to delete snippets") }
+    return { error: getActionErrorMessage(error, "Failed to delete snippets") }
   }
 }
 
@@ -402,7 +418,7 @@ export async function toggleSnippetVisibility(
     revalidatePath("/snippets")
     return { ok: true }
   } catch (error) {
-    return { error: message(error, "Failed to update sharing") }
+    return { error: getActionErrorMessage(error, "Failed to update sharing") }
   }
 }
 
@@ -419,6 +435,6 @@ export async function exportSnippets(
     const data = await snippetService.getSnippetsExport(userId, scope)
     return { ok: true, json: JSON.stringify(data, null, 2) }
   } catch (error) {
-    return { error: message(error, "Failed to export snippets") }
+    return { error: getActionErrorMessage(error, "Failed to export snippets") }
   }
 }

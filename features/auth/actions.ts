@@ -38,7 +38,11 @@ export async function signUp(
   }
 
   if (data?.user) {
-    await syncUserWithPrisma(data.user);
+    try {
+      await syncUserWithPrisma(data.user);
+    } catch {
+      // The user is re-synced on the next authenticated session lookup.
+    }
   }
 
   redirect("/auth/sign-in");
