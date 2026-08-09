@@ -34,6 +34,17 @@ const COLLECTION_SORTS: CollectionSort[] = [
   "count",
 ]
 
+const COLLECTION_MUTATION_ROUTES = [
+  "/dashboard",
+  "/dashboard/collections",
+] as const
+
+function revalidateCollectionRoutes() {
+  for (const route of COLLECTION_MUTATION_ROUTES) {
+    revalidatePath(route)
+  }
+}
+
 export type CollectionPageArgs = {
   cursor: string | null
   query?: string
@@ -144,7 +155,7 @@ export async function createCollection(
       targetId: collection.id,
       title: collection.name,
     })
-    revalidatePath("/collections")
+    revalidateCollectionRoutes()
     return { collectionId: collection.id }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to create collection") }
@@ -178,7 +189,7 @@ export async function updateCollection(
       targetId: collection.id,
       title: collection.name,
     })
-    revalidatePath("/collections")
+    revalidateCollectionRoutes()
     return { collectionId: collection.id }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to update collection") }
@@ -202,7 +213,7 @@ export async function deleteCollection(
         title: deleted.name,
       })
     }
-    revalidatePath("/collections")
+    revalidateCollectionRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to delete collection") }
@@ -226,7 +237,7 @@ export async function duplicateCollection(
         title: collection.name,
       })
     }
-    revalidatePath("/collections")
+    revalidateCollectionRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to duplicate collection") }
@@ -250,6 +261,7 @@ export async function setSnippetCollections(
       parsed.data.snippetId,
       parsed.data.collectionIds,
     )
+    revalidatePath("/dashboard")
     revalidatePath("/dashboard/snippets")
     revalidatePath("/dashboard/collections")
     return { ok: true }
@@ -275,7 +287,8 @@ export async function addSnippetsToCollection(
       parsed.data.collectionId,
       parsed.data.snippetIds,
     )
-    revalidatePath("/dashboard/collections")
+    revalidateCollectionRoutes()
+    revalidatePath(`/dashboard/collections/${parsed.data.collectionId}`)
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to add snippets") }
@@ -299,7 +312,8 @@ export async function removeSnippetFromCollection(
       parsed.data.collectionId,
       parsed.data.snippetId,
     )
-    revalidatePath("/dashboard/collections")
+    revalidateCollectionRoutes()
+    revalidatePath(`/dashboard/collections/${parsed.data.collectionId}`)
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to remove snippet") }
@@ -330,7 +344,7 @@ export async function bulkDeleteCollections(
         title: collection.name,
       })),
     )
-    revalidatePath("/dashboard/collections")
+    revalidateCollectionRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to delete collections") }
@@ -361,7 +375,7 @@ export async function bulkDuplicateCollections(
         title: collection.name,
       })),
     )
-    revalidatePath("/dashboard/collections")
+    revalidateCollectionRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to duplicate collections") }

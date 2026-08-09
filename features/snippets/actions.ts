@@ -32,6 +32,14 @@ const SNIPPET_SORTS: SnippetSort[] = [
   "language",
 ]
 
+const SNIPPET_MUTATION_ROUTES = ["/dashboard", "/dashboard/snippets"] as const
+
+function revalidateSnippetRoutes() {
+  for (const route of SNIPPET_MUTATION_ROUTES) {
+    revalidatePath(route)
+  }
+}
+
 export type SnippetPageArgs = {
   cursor: string | null
   query?: string
@@ -178,7 +186,7 @@ export async function createSnippet(
       targetId: snippet.id,
       title: snippet.title,
     })
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { snippetId: snippet.id }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to create snippet") }
@@ -213,7 +221,7 @@ export async function updateSnippet(
       targetId: snippet.id,
       title: snippet.title,
     })
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { snippetId: snippet.id }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to update snippet") }
@@ -230,7 +238,7 @@ export async function deleteSnippet(
   try {
     await snippetService.deleteSnippet(userId, id)
     await recentService.recordSnippet(userId, id, "deleted")
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to delete snippet") }
@@ -246,7 +254,7 @@ export async function restoreSnippet(
 
   try {
     await snippetService.restoreSnippet(userId, id)
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to restore snippet") }
@@ -262,7 +270,7 @@ export async function deleteSnippetForever(
 
   try {
     await snippetService.deleteSnippetForever(userId, id)
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to delete snippet permanently") }
@@ -286,7 +294,7 @@ export async function duplicateSnippet(
         title: snippet.title,
       })
     }
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to duplicate snippet") }
@@ -310,7 +318,7 @@ export async function toggleSnippetFavorite(
         title: snippet.title,
       })
     }
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to update snippet") }
@@ -334,7 +342,7 @@ export async function toggleSnippetArchive(
         title: snippet.title,
       })
     }
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to update snippet") }
@@ -357,7 +365,7 @@ export async function bulkFavoriteSnippets(
     if (isFavorite) {
       await recentService.recordSnippets(userId, ids, "favorited")
     }
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to update snippets") }
@@ -377,7 +385,7 @@ export async function bulkArchiveSnippets(
   try {
     await snippetService.bulkSetArchived(userId, ids, true)
     await recentService.recordSnippets(userId, ids, "archived")
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to archive snippets") }
@@ -397,7 +405,7 @@ export async function bulkDeleteSnippets(
   try {
     await snippetService.bulkDeleteSnippets(userId, ids)
     await recentService.recordSnippets(userId, ids, "deleted")
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to delete snippets") }
@@ -415,7 +423,7 @@ export async function toggleSnippetVisibility(
 
   try {
     await snippetService.setVisibility(userId, id, isPublic)
-    revalidatePath("/snippets")
+    revalidateSnippetRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to update sharing") }

@@ -28,6 +28,14 @@ import type { TagListItem, TagSort } from "./types"
 
 const TAG_SORTS: TagSort[] = ["updated", "created", "az", "za", "count"]
 
+const TAG_MUTATION_ROUTES = ["/dashboard", "/dashboard/tags"] as const
+
+function revalidateTagRoutes() {
+  for (const route of TAG_MUTATION_ROUTES) {
+    revalidatePath(route)
+  }
+}
+
 export type TagPageArgs = {
   cursor: string | null
   query?: string
@@ -124,7 +132,7 @@ export async function createTag(
       targetId: tag.id,
       title: tag.name,
     })
-    revalidatePath("/dashboard/tags")
+    revalidateTagRoutes()
     return { tagId: tag.id }
   } catch (error) {
     if (isNameTakenError(error)) {
@@ -157,7 +165,7 @@ export async function updateTag(
       targetId: tag.id,
       title: tag.name,
     })
-    revalidatePath("/dashboard/tags")
+    revalidateTagRoutes()
     return { tagId: tag.id }
   } catch (error) {
     if (isNameTakenError(error)) {
@@ -176,7 +184,7 @@ export async function deleteTag(
 
   try {
     await tagService.deleteTag(userId, id)
-    revalidatePath("/dashboard/tags")
+    revalidateTagRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to delete tag") }
@@ -192,7 +200,7 @@ export async function duplicateTag(
 
   try {
     await tagService.duplicateTag(userId, id)
-    revalidatePath("/dashboard/tags")
+    revalidateTagRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to duplicate tag") }
@@ -216,7 +224,7 @@ export async function addSnippetsToTag(
       parsed.data.tagId,
       parsed.data.snippetIds,
     )
-    revalidatePath("/dashboard/tags")
+    revalidateTagRoutes()
     revalidatePath(`/dashboard/tags/${parsed.data.tagId}`)
     return { ok: true }
   } catch (error) {
@@ -241,7 +249,7 @@ export async function removeSnippetFromTag(
       parsed.data.tagId,
       parsed.data.snippetId,
     )
-    revalidatePath("/dashboard/tags")
+    revalidateTagRoutes()
     revalidatePath(`/dashboard/tags/${parsed.data.tagId}`)
     return { ok: true }
   } catch (error) {
@@ -261,7 +269,7 @@ export async function bulkDeleteTags(
 
   try {
     await tagService.deleteTags(userId, parsed.data.ids)
-    revalidatePath("/dashboard/tags")
+    revalidateTagRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to delete tags") }
@@ -280,7 +288,7 @@ export async function bulkDuplicateTags(
 
   try {
     await tagService.duplicateTags(userId, parsed.data.ids)
-    revalidatePath("/dashboard/tags")
+    revalidateTagRoutes()
     return { ok: true }
   } catch (error) {
     return { error: getActionErrorMessage(error, "Failed to duplicate tags") }
