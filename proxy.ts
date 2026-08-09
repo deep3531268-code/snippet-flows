@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth/server";
+import { isAuthDevBypassEnabled } from "@/features/auth/config";
 import type { NextRequest } from "next/server";
 
 const protect = auth.middleware({
@@ -6,8 +7,9 @@ const protect = auth.middleware({
 });
 
 export default function proxy(request: NextRequest) {
-  // Temporary D1.2 development bypass: skip dashboard auth checks during development.
-  if (process.env.NODE_ENV === "development") {
+  // Development-only bypass: skip dashboard auth checks only when explicitly
+  // enabled (AUTH_DEV_BYPASS=true) outside production.
+  if (isAuthDevBypassEnabled()) {
     return;
   }
 

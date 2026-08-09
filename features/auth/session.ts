@@ -5,8 +5,10 @@ import type { User } from "@prisma/client";
 
 import { auth } from "@/lib/auth/server";
 import { syncUserWithPrisma } from "@/features/auth/service";
+import { isAuthDevBypassEnabled } from "@/features/auth/config";
 
-// Temporary D1.2 development bypass: grants unauthenticated dashboard access.
+// Development-only bypass: grants unauthenticated dashboard access only when
+// explicitly enabled (AUTH_DEV_BYPASS=true) outside production.
 const DEV_USER: User = {
   id: "00000000-0000-0000-0000-000000000000",
   email: "dev@snippetflow.local",
@@ -17,8 +19,7 @@ const DEV_USER: User = {
 };
 
 export async function getCurrentUser() {
-  // Temporary D1.2 development bypass: skip session checks during development.
-  if (process.env.NODE_ENV === "development") {
+  if (isAuthDevBypassEnabled()) {
     return syncUserWithPrisma(DEV_USER);
   }
 

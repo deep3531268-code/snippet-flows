@@ -203,6 +203,12 @@ async function verifyDemoData(prisma: PrismaClient) {
 }
 
 export async function runSeed(): Promise<void> {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "The demo seed must not run in production: it replaces the demo user's dataset.",
+    )
+  }
+
   const anchor = resolveAnchorDate()
   assertDataset(SNIPPETS)
   const metadata = assertMetadataDistribution()
