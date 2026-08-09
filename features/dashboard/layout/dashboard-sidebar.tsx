@@ -9,7 +9,7 @@ import {
   ChevronsUpDown,
   Clock,
   Command,
-  Folder,
+  Compass,
   Home,
   LogOut,
   MoreHorizontal,
@@ -42,7 +42,7 @@ const NAV_ITEMS = [
   { label: "Recent", href: "/dashboard/recent", icon: Clock },
   { label: "Collections", href: "/dashboard/collections", icon: Bookmark },
   { label: "Tags", href: "/dashboard/tags", icon: Tag },
-  { label: "Resources", href: "/dashboard/shared", icon: Folder },
+  { label: "Explore", href: "/dashboard/explore", icon: Compass },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ] as const;
 

@@ -136,13 +136,11 @@ const PAGE_SORT_FIELDS: Record<SnippetSort, CursorField[]> = {
   ],
 }
 
-function buildWhere(
-  userId: string,
-  filter: SnippetFilter,
-  options: SnippetFilterOptions = {},
-  scope?: Prisma.SnippetWhereInput,
-): Prisma.SnippetWhereInput {
-  const conditions: Prisma.SnippetWhereInput[] = [filterWhere(userId, filter)]
+// Filter conditions shared by every scoped query (personal + public discovery).
+function filterOptionsWhere(
+  options: SnippetFilterOptions,
+): Prisma.SnippetWhereInput[] {
+  const conditions: Prisma.SnippetWhereInput[] = []
   if (options.query) conditions.push(searchWhere(options.query))
   if (options.language) conditions.push({ language: options.language })
   if (options.visibility) {
@@ -153,8 +151,33 @@ function buildWhere(
     conditions.push({ tags: { some: { tag: { name: options.tag } } } })
   }
   if (options.favoritesOnly) conditions.push({ isFavorite: true })
+  return conditions
+}
+
+function buildWhere(
+  userId: string,
+  filter: SnippetFilter,
+  options: SnippetFilterOptions = {},
+  scope?: Prisma.SnippetWhereInput,
+): Prisma.SnippetWhereInput {
+  const conditions: Prisma.SnippetWhereInput[] = [
+    filterWhere(userId, filter),
+    ...filterOptionsWhere(options),
+  ]
   if (scope) conditions.push(scope)
 
+  return conditions.length === 1 ? conditions[0] : { AND: conditions }
+}
+
+// Public discovery is always scoped to non-deleted, non-archived, public rows so
+// private/removed content can never leak into Explore.
+function publicWhere(
+  options: SnippetFilterOptions = {},
+): Prisma.SnippetWhereInput {
+  const conditions: Prisma.SnippetWhereInput[] = [
+    { isPublic: true, deletedAt: null, isArchived: false },
+    ...filterOptionsWhere(options),
+  ]
   return conditions.length === 1 ? conditions[0] : { AND: conditions }
 }
 
@@ -294,6 +317,41 @@ export const snippetRepository = {
     return prisma.snippet.findFirst({
       where: { slug, isPublic: true, deletedAt: null },
       include: snippetInclude,
+    })
+  },
+
+  findPublicPage(
+    options: SnippetFilterOptions = {},
+    cursor: Cursor | null = null,
+  ): Promise<Page<SnippetWithRelations>> {
+    const sort = options.sort ?? "updated"
+    return loadPage({
+      where: publicWhere(options),
+      orderBy: PAGE_SORT_ORDER[sort],
+      cursorFields: PAGE_SORT_FIELDS[sort],
+      cursor,
+      pageSize: PAGINATION_CONFIG.snippetPageSize,
+      findMany: (args) =>
+        prisma.snippet.findMany({ ...args, include: snippetInclude }),
+    })
+  },
+
+  countPublic(options: SnippetFilterOptions = {}) {
+    return prisma.snippet.count({ where: publicWhere(options) })
+  },
+
+  findPublicTagNames() {
+    return prisma.tag.findMany({
+      where: {
+        snippets: {
+          some: {
+            snippet: { isPublic: true, deletedAt: null, isArchived: false },
+          },
+        },
+      },
+      select: { name: true },
+      orderBy: { name: "asc" },
+      distinct: ["name"],
     })
   },
 

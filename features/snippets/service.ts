@@ -101,6 +101,22 @@ export const snippetService = {
     return snippetRepository.findPublicBySlug(slug)
   },
 
+  listPublicSnippetsPage(
+    options: SnippetFilterOptions = {},
+    cursor: Cursor | null = null,
+  ) {
+    return snippetRepository.findPublicPage(options, cursor)
+  },
+
+  countPublicSnippets(options: SnippetFilterOptions = {}) {
+    return snippetRepository.countPublic(options)
+  },
+
+  async getPublicTagNames(): Promise<string[]> {
+    const rows = await snippetRepository.findPublicTagNames()
+    return rows.map((row) => row.name)
+  },
+
   async createSnippet(userId: string, input: CreateSnippetInput) {
     return snippetRepository.create(userId, {
       title: input.title,
