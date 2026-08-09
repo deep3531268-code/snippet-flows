@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Compass, RotateCcw, SearchX } from "lucide-react"
 
 import {
@@ -18,8 +18,14 @@ import {
   type ExploreFilters,
 } from "@/features/explore/query"
 import type { SnippetListItem, SnippetSort } from "@/features/snippets/types"
+import { ExploreActiveFilters } from "./explore-active-filters"
 import { ExploreToolbar } from "./explore-toolbar"
 import { PublicSnippetCard } from "./public-snippet-card"
+
+function shortQuery(query: string) {
+  const trimmed = query.trim()
+  return trimmed.length > 32 ? `${trimmed.slice(0, 32)}…` : trimmed
+}
 
 function ExplorePage({
   snippets,
@@ -62,6 +68,27 @@ function ExplorePage({
     setSort("updated")
   }, [])
 
+  // ⌘/Ctrl+F focuses the Explore search input (matches the hint shown in the
+  // search field and the pattern used by the snippets list).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.metaKey || event.ctrlKey
+      if (!mod || event.key.toLowerCase() !== "f") return
+      const target = event.target as HTMLElement | null
+      if (target?.dataset.exploreSearch !== undefined) return
+      event.preventDefault()
+      document
+        .querySelector<HTMLInputElement>("[data-explore-search]")
+        ?.focus()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
+
+  const hasQuery = filters.query.trim().length > 0
+  const hasSelection =
+    filters.language !== "all" || filters.tag !== "all"
+
   const loadPage = useCallback(
     (cursor: string | null) =>
       loadMoreExploreSnippets({
@@ -103,12 +130,14 @@ function ExplorePage({
             <p className="text-sm text-[#94a3b8]">
               Discover public snippets shared by the community.
             </p>
-            <DashboardBadge variant="secondary">
-              {(totalCount ?? items.length)}{" "}
-              {(totalCount ?? items.length) === 1
-                ? "public snippet"
-                : "public snippets"}
-            </DashboardBadge>
+            {!hasActiveExploreFilters(filters) ? (
+              <DashboardBadge variant="secondary">
+                {(totalCount ?? items.length)}{" "}
+                {(totalCount ?? items.length) === 1
+                  ? "public snippet"
+                  : "public snippets"}
+              </DashboardBadge>
+            ) : null}
           </div>
         </div>
       </div>
@@ -124,12 +153,30 @@ function ExplorePage({
         onSearchChange={setSearchInput}
       />
 
+      <ExploreActiveFilters
+        filters={filters}
+        onChange={patchFilters}
+        onClear={clearFilters}
+      />
+
       {items.length === 0 ? (
         initialLoading ? null : hasActiveExploreFilters(filters) ? (
           <EmptyState
             icon={SearchX}
-            title="No public snippets found"
-            description="Try adjusting your search or filters."
+            title={
+              hasQuery && !hasSelection
+                ? `No results for "${shortQuery(filters.query)}"`
+                : hasSelection && !hasQuery
+                  ? "No snippets match your filters"
+                  : "No public snippets found"
+            }
+            description={
+              hasQuery && !hasSelection
+                ? "Try a different search term."
+                : hasSelection && !hasQuery
+                  ? "Try removing a filter to see more results."
+                  : "Try adjusting your search or filters."
+            }
             className="min-h-[320px] flex-1"
           >
             <DashboardButton variant="secondary" onClick={clearFilters}>
