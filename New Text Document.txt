@@ -1,9 +1,0 @@
-# Keep Neon credentials secure: do not expose them to client-side code
-DATABASE_URL='postgresql://neondb_owner:npg_fTVilN3xDza2@ep-spring-pine-ay67n2ev-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
-
-# Neon Auth (Managed Better Auth)
-# Auth URL from Neon Console: Project -> Auth -> Configuration
-NEON_AUTH_BASE_URL='https://ep-spring-pine-ay67n2ev.neonauth.c-5.us-east-2.aws.neon.tech/neondb/auth'
-
-# Secret for signing session data cookies (32+ characters, HMAC-SHA256)
-NEON_AUTH_COOKIE_SECRET='1B97bR6rOWAiqQjBtwApdw7y0KlIiT+HWDj3KQuB64I='

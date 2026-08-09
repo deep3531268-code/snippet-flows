@@ -24,4 +24,3 @@ export {
   recordSnippetCopied,
   recordSnippetViewed,
 } from "./actions"
-export { useRecentActivity } from "./use-recent-activity"
